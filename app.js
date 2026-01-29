@@ -1,3 +1,8 @@
+/**
+ * THE HUNGER FIX - MAIN LOGIC (app.js)
+ * This file handles API communication, location logic, and UI transitions.
+ */
+
 import { GOOGLE_API_KEY, cuisineMapping } from './config.js';
 import { searchEmojis, errorEmojis, searchJokes, errorJokes } from './jokes.js';
 
@@ -9,13 +14,15 @@ let blacklist = new Set(), history = [], flickerInterval;
 
 // --- UTILITY FUNCTIONS ---
 
-/** * Clears the flickering emoji interval to save memory.
+/**
+ * Clears the flickering emoji interval to save memory.
  */
 function stopFlicker() { 
     if (flickerInterval) clearInterval(flickerInterval); 
 }
 
-/** * Randomly cycles through a set of emojis at 400ms intervals.
+/**
+ * Cycles through emojis at 400ms intervals to create a loading animation.
  * @param {Array} emojiSet - The array of emojis to cycle.
  */
 function startFlicker(emojiSet) {
@@ -27,8 +34,9 @@ function startFlicker(emojiSet) {
     }, 400); 
 }
 
-/** * Handles the screen transition animation (Slide out, callback, Slide in).
- * @param {Function} cb - The function that renders the new UI.
+/**
+ * Handles the screen transition animation (Slide out, update UI, Slide in).
+ * @param {Function} cb - The function that renders the new screen.
  */
 function transition(cb) {
     container.classList.add('fade-out');
@@ -41,7 +49,8 @@ function transition(cb) {
 
 // --- UI RENDERING FUNCTIONS ---
 
-/** * Renders the filter settings and cuisine options screen.
+/**
+ * Renders the filter settings and cuisine options screen.
  */
 function showCuisineSelection() {
     transition(() => {
@@ -72,10 +81,11 @@ function showCuisineSelection() {
     });
 }
 
-/** * Attaches event listeners to the dynamically generated buttons in showCuisineSelection.
+/**
+ * Attaches event listeners to the buttons generated in showCuisineSelection.
  */
 function setupCuisineListeners() {
-    // Distance buttons
+    // Distance buttons (KM)
     document.querySelectorAll('.dist-btn').forEach(b => {
         b.onclick = () => { 
             userLimitDist = parseInt(b.dataset.dist); 
@@ -97,18 +107,18 @@ function setupCuisineListeners() {
     document.getElementById('surpriseBtn').onclick = () => startSearch('Surprise');
 }
 
-// --- CORE SEARCH LOGIC ---
+// --- CORE SEARCH & SHUFFLE LOGIC ---
 
-/** * Calls the Google Places API nearby search. Recursively increases radius if no spots found.
- * @param {string} type - The category of food selected.
- * @param {number} currentTierIdx - Tracks the current distance tier (5km to 35km).
+/**
+ * Calls Google Places API and implements Option 2 (Fisher-Yates Shuffle)
+ * to ensure variety and prevent chains from dominating results.
  */
 async function startSearch(type, currentTierIdx = null) {
     const tiers = [5000, 15000, 25000, 35000];
     if (currentTierIdx === null) currentTierIdx = tiers.indexOf(userLimitDist);
     const currentDist = tiers[currentTierIdx];
     
-    // Show Loading State
+    // UI Loading state
     screen.innerHTML = `
         <div><span id="flicker-target" class="smiley-flicker">🍕</span></div>
         <div class="joke-container">"${searchJokes[Math.floor(Math.random() * searchJokes.length)]}"</div>
@@ -131,10 +141,7 @@ async function startSearch(type, currentTierIdx = null) {
                 includedTypes: cuisineMapping[searchType],
                 maxResultCount: 20,
                 locationRestriction: { 
-                    circle: { 
-                        center: { latitude: lat, longitude: lon }, 
-                        radius: currentDist 
-                    } 
+                    circle: { center: { latitude: lat, longitude: lon }, radius: currentDist } 
                 }
             })
         });
@@ -146,28 +153,38 @@ async function startSearch(type, currentTierIdx = null) {
             placeList = placeList.filter(p => p.currentOpeningHours?.openNow === true);
         }
 
-        // Recursion logic: If empty, try the next distance tier
-        if (placeList.length === 0 && currentTierIdx < (tiers.length - 1)) {
-            return startSearch(type, currentTierIdx + 1);
-        }
-        
-        stopFlicker();
+        // --- OPTION 2: THE SHUFFLE ALGORITHM ---
         if (placeList.length > 0) {
-            const place = placeList[Math.floor(Math.random() * placeList.length)];
+            // Fisher-Yates Shuffle ensures total randomness among the 20 results
+            for (let i = placeList.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [placeList[i], placeList[j]] = [placeList[j], placeList[i]];
+            }
+
+            stopFlicker();
+            // Pick the first result after the shuffle
+            const place = placeList[0];
             addToHistory(place, searchType);
             showVerdict(place, searchType);
-        } else {
+        } 
+        // Recursion logic: If empty, try the next distance tier
+        else if (currentTierIdx < (tiers.length - 1)) {
+            return startSearch(type, currentTierIdx + 1);
+        } 
+        else {
+            stopFlicker();
             showError(errorJokes[Math.floor(Math.random() * errorJokes.length)]);
         }
     } catch (e) { 
         stopFlicker(); 
-        showError("Network error. Your signal might be hungry."); 
+        showError("Network error. The internet is as hungry as you are."); 
     }
 }
 
 // --- FINAL VERDICT & ERROR SCREENS ---
 
-/** * Displays the winning restaurant card.
+/**
+ * Displays the winning restaurant card.
  */
 function showVerdict(place, type) {
     transition(() => {
@@ -190,7 +207,8 @@ function showVerdict(place, type) {
     });
 }
 
-/** * Displays the error/frown screen when search fails.
+/**
+ * Displays the error screen when no results are found.
  */
 function showError(msg) {
     transition(() => {
@@ -207,7 +225,8 @@ function showError(msg) {
 
 // --- HISTORY LOGIC ---
 
-/** * Adds a found spot to the local history list.
+/**
+ * Adds a restaurant to the persistent history bar.
  */
 function addToHistory(place, type) {
     if (history.find(h => h.id === place.id)) return;
@@ -228,7 +247,7 @@ function addToHistory(place, type) {
 // --- INITIAL EVENT LISTENERS ---
 
 document.getElementById('findFoodBtn').onclick = () => { 
-    if (!lat) return alert("Select location first!"); 
+    if (!lat) return alert("Please select a location!"); 
     showCuisineSelection(); 
 };
 
@@ -286,7 +305,7 @@ document.getElementById('cityInput').oninput = (e) => {
     }, 500);
 };
 
-// Close suggestions on outside click
+// Global listener to close suggestions on outside click
 document.addEventListener('click', (e) => {
     if (e.target.id !== 'suggestions' && e.target.id !== 'cityInput') {
         document.getElementById('suggestions').style.display = 'none';
