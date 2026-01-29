@@ -24,11 +24,10 @@
         
         button { background: black; color: white; border: 1px solid black; padding: 18px; width: 100%; cursor: pointer; font-size: 1rem; margin-bottom: 12px; transition: 0.2s; border-radius: 0; font-weight: bold; }
         .secondary-btn { background: white; color: black; }
-        .surprise-btn { background: #FF3B30; border-color: #FF3B30; color: white; }
-        
-        .dist-label { font-size: 0.7rem; font-weight: bold; margin-bottom: 10px; color: #666; text-transform: uppercase; }
-        .dist-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
-        .dist-btn { padding: 12px 5px; border: 1px solid black; background: white; cursor: pointer; font-size: 0.75rem; font-weight: bold; }
+
+        .dist-label { font-size: 0.7rem; font-weight: bold; margin-bottom: 8px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+        .dist-toggle { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 20px; }
+        .dist-btn { padding: 10px 2px; border: 1px solid black; background: white; cursor: pointer; font-size: 0.7rem; font-weight: bold; }
         .dist-btn.active { background: black; color: white; }
 
         .spot-card { border: 2px solid black; padding: 35px 25px; margin-top: 10px; text-align: left; position: relative; background: #fff; }
@@ -56,7 +55,7 @@
     </div>
 
     <script>
-        const GOOGLE_API_KEY = "AIzaSyBkYWkdgAQ0hB_hlFmTLcJxm0dvDDO7JVA";
+        const GOOGLE_API_KEY = "YOUR_API_KEY_HERE";
 
         const container = document.getElementById('app-container');
         const screen = document.getElementById('screen-content');
@@ -65,45 +64,68 @@
         let userLimitDist = 5000; 
         let blacklist = new Set();
         
-        const jokes = {
-            'Brain Dead': [
-                "Locating food that doesn't require thinking...",
-                "Searching for a place where pajamas are acceptable attire.",
-                "Finding a menu with pictures so you don't have to read.",
-                "Bargaining with a burrito for your sanity."
-            ],
-            'Main Character': [
-                "Finding a spot with lighting that deserves an Oscar...",
-                "Searching for a table that matches your aesthetic.",
-                "Locating the most expensive water in the city.",
-                "Consulting the fashion police for the best brunch spot."
-            ],
-            'Social Battery 0%': [
-                "Finding a dark corner where nobody will talk to you...",
-                "Searching for a place that ignores your existence (in a good way).",
-                "Locating a booth big enough to hide in.",
-                "Scanning for restaurants with 0% chance of small talk."
-            ],
-            'error': [
-                "The algorithm has left the chat.",
-                "Our satellite hit a pigeon. Again.",
-                "We found a place, but it's on Mars. Try again?",
-                "The chef is crying. We can't go there right now.",
-                "Your internet is acting hangry."
-            ]
+        const distanceTiers = [5000, 15000, 25000, 35000];
+
+        // POOL OF RANDOM JOKES (Will mix with specific mood jokes)
+        const globalJokes = [
+            "Bribing the chef with five-star reviews...",
+            "Checking if the waiter is secretly a robot...",
+            "Consulting the burger gods for guidance...",
+            "Polishing the digital silverware...",
+            "Calculating the optimal crust-to-sauce ratio...",
+            "Negotiating with a rogue delivery driver...",
+            "Searching for a table far from the bathroom...",
+            "Confirming the Wi-Fi password isn't 'guest123'...",
+            "Analyzing menus for hidden 'artisanal' surcharges...",
+            "Asking the satellite to zoom in on the fries...",
+            "Praying for a place with actual napkins...",
+            "Bargaining with your stomach for 10 more seconds..."
+        ];
+
+        const moodJokes = {
+            'Brain Dead': ["Locating food that doesn't require thinking...", "Finding a menu with pictures...", "Finding pajama-friendly zones..."],
+            'Main Character': ["Finding lighting that deserves an Oscar...", "Locating expensive water...", "Consulting the fashion police..."],
+            'Social Battery 0%': ["Finding a dark corner...", "Searching for a place that ignores you...", "Scanning for 0% small talk..."]
         };
 
+        const errorMessages = [
+            "The algorithm has left the chat.",
+            "Our satellite hit a pigeon. Again.",
+            "The chef is crying. We can't go there.",
+            "Found a spot, but it's on Mars.",
+            "Your internet is acting hangry.",
+            "Even the rats are avoiding this area.",
+            "The kitchen is currently in a state of chaos.",
+            "We found food, but it's 100% invisible.",
+            "A cloud moved. We lost the signal.",
+            "The algorithm decided you should just eat a snack at home.",
+            "Our servers are currently undergoing a mid-life crisis.",
+            "The Wi-Fi is slower than a snail on a coffee break.",
+            "The database is allergic to your location.",
+            "Oops! The map just folded itself into a crane.",
+            "No results found. Maybe try a different dimension?"
+        ];
+
         const cuisineMapping = {
-            'Comfort': 'hamburger_restaurant', 'Spicy': 'mexican_restaurant',
-            'Fancy': 'french_restaurant', 'Healthy': 'salad_shop',
-            'Quick': 'sandwich_shop', 'Late Night': 'pizza_restaurant'
+            'Comfort': ['hamburger_restaurant', 'steak_house', 'american_restaurant'],
+            'Spicy': ['mexican_restaurant', 'indian_restaurant', 'thai_restaurant'],
+            'Fancy': ['french_restaurant', 'italian_restaurant', 'seafood_restaurant', 'fine_dining_restaurant'],
+            'Healthy': ['salad_shop', 'vegan_restaurant', 'vegetarian_restaurant'],
+            'Quick': ['sandwich_shop', 'bakery', 'cafe'],
+            'Late Night': ['pizza_restaurant', 'diner', 'fast_food_restaurant']
         };
 
         function handleNext() { if (!lat) return alert("Select a city first!"); showMoodSelection(); }
 
+        function setDistance(dist) { userLimitDist = dist; showMoodSelection(); }
+
         function showMoodSelection() { 
             transition(() => { 
                 screen.innerHTML = `
+                    <div class="dist-label">Max Search Radius</div>
+                    <div class="dist-toggle">
+                        ${distanceTiers.map(d => `<button class="dist-btn ${userLimitDist === d ? 'active' : ''}" onclick="setDistance(${d})">${d/1000}KM</button>`).join('')}
+                    </div>
                     <h1>What's the energy?</h1>
                     <button onclick="showCuisine('Brain Dead')">🫠 Brain Dead</button>
                     <button onclick="showCuisine('Main Character')">✨ Main Character</button>
@@ -124,26 +146,27 @@
             });
         }
 
-        function startSearch(type) { runSearch(type); }
-
-        async function runSearch(type) {
-            const pool = jokes[selectedMood] || jokes['error'];
+        async function startSearch(type, currentTierIdx = 0) {
+            const currentDist = distanceTiers[currentTierIdx];
+            const loaders = ["🌀", "🍕", "🍔", "🌮", "🍣", "🍦", "🥪", "🍳"];
+            const pool = [...globalJokes, ...(moodJokes[selectedMood] || [])];
             const randomJoke = pool[Math.floor(Math.random() * pool.length)];
+            const randomIcon = loaders[Math.floor(Math.random() * loaders.length)];
             
             screen.innerHTML = `
-                <div class="smiley-loader">🌀</div>
+                <div class="smiley-loader">${randomIcon}</div>
+                <div class="loading-header" style="font-size:0.7rem; font-weight:bold; margin-bottom:10px;">SCANNING ${currentDist/1000}KM...</div>
                 <div class="joke-container">"${randomJoke}"</div>
             `;
 
             let bodyData = {
-                includedTypes: [cuisineMapping[type]],
-                maxResultCount: 10,
-                locationRestriction: { circle: { center: { latitude: lat, longitude: lon }, radius: userLimitDist } }
+                includedTypes: cuisineMapping[type],
+                maxResultCount: 20,
+                locationRestriction: { circle: { center: { latitude: lat, longitude: lon }, radius: currentDist } }
             };
 
-            // MOOD LOGIC
             if (selectedMood === 'Brain Dead') bodyData.priceLevels = ["PRICE_LEVEL_INEXPENSIVE"];
-            if (selectedMood === 'Main Character') bodyData.ratingFilter = { minRating: 4.0 };
+            if (selectedMood === 'Main Character') bodyData.ratingFilter = { minRating: 4.2 };
             
             try {
                 const response = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
@@ -153,12 +176,15 @@
                 });
 
                 const data = await response.json();
-                const place = (data.places || []).filter(p => !blacklist.has(p.id))[0];
-
-                if (place) {
+                const placeList = (data.places || []).filter(p => !blacklist.has(p.id));
+                
+                if (placeList.length > 0) {
+                    const place = placeList[Math.floor(Math.random() * placeList.length)];
                     showVerdict(place, type);
+                } else if (currentDist < userLimitDist) {
+                    setTimeout(() => startSearch(type, currentTierIdx + 1), 800);
                 } else {
-                    showError("No spots found for this vibe nearby.");
+                    showError("No " + type + " spots found within " + userLimitDist/1000 + "KM. Tragic.");
                 }
             } catch (e) { showError(); }
         }
@@ -173,20 +199,21 @@
                         <p>Rating: ⭐ ${place.rating || 'New'}</p>
                         <a href="${place.googleMapsUri}" target="_blank" class="action-btn">📍 GET ME THERE</a>
                     </div>
-                    <button class="back-link" onclick="blacklist.add('${place.id}'); runSearch('${type}')">Show me something else</button>
+                    <button class="back-link" onclick="blacklist.add('${place.id}'); startSearch('${type}')">Show me something else</button>
+                    <button class="back-link" style="text-decoration:none; margin-top:10px;" onclick="showMoodSelection()">← Change Vibe</button>
                 `;
             });
         }
 
         function showError(msg) {
-            const errJoke = jokes.error[Math.floor(Math.random() * jokes.error.length)];
-            const smileys = ["💀", "🫠", "🍄", "📉"];
+            const smileys = ["💀", "🫠", "🪦", "📉", "🍄", "🫥", "🚬", "🥀"];
+            const randomError = errorMessages[Math.floor(Math.random() * errorMessages.length)];
             transition(() => {
                 screen.innerHTML = `
                     <div class="smiley-loader">${smileys[Math.floor(Math.random()*smileys.length)]}</div>
-                    <h1>DOOMED</h1>
-                    <div class="joke-container">${msg || errJoke}</div>
-                    <button onclick="location.reload()">Reset</button>
+                    <h1>EMPTY PLATE</h1>
+                    <div class="joke-container">${msg || randomError}</div>
+                    <button onclick="showMoodSelection()">Try Again</button>
                 `;
             });
         }
