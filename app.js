@@ -11,6 +11,7 @@ const container = document.getElementById('app-container');
 const screen = document.getElementById('screen-content');
 let lat = "", lon = "", userLimitDist = 15000, openNowOnly = true;
 let blacklist = new Set(), history = [], flickerInterval;
+const forbiddenKeywords = ['hotel', 'inn', 'suites', 'market', 'wholesale', 'grocery', 'liquor', 'supermarket'];
 
 // --- UTILITY FUNCTIONS ---
 
