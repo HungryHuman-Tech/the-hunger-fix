@@ -3,7 +3,7 @@
  * * GOOGLE_API_KEY: Your unique key to access Google Places API.
  * cuisineMapping: Links user-friendly categories to Google's specific Place Types.
  */
-export const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY";
+export const GOOGLE_API_KEY = "AIzaSyBkYWkdgAQ0hB_hlFmTLcJxm0dvDDO7JVA";
 
 export const cuisineMapping = {
     'Comfort': ['hamburger_restaurant', 'steak_house', 'pizza_restaurant'],
