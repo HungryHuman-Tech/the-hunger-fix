@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE HUNGER FIX</title>
+    <style>
+        body, html { 
+            margin: 0; padding: 0; height: 100%; 
+            display: flex; justify-content: center; align-items: center; 
+            background-color: #ffffff; color: #000000; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            overflow: hidden; 
+        }
+        #app-container { text-align: center; width: 90%; max-width: 400px; transition: all 0.4s ease; }
+        .fade-in { opacity: 1; transform: translateY(0); transition: 0.4s; }
+        .fade-out { opacity: 0; transform: translateY(-20px); transition: 0.4s; }
+        h1 { font-weight: 800; margin-bottom: 1.5rem; font-size: 1.8rem; letter-spacing: 1px; text-transform: uppercase; }
+        
+        /* Input & UI Components */
+        .input-wrapper { position: relative; width: 100%; }
+        input { width: 100%; padding: 18px; border: 1px solid black; margin-bottom: 1rem; box-sizing: border-box; font-size: 1rem; text-align: center; outline: none; border-radius: 0; }
+        #suggestions { position: absolute; top: 56px; left: 0; width: 100%; background: white; border: 1px solid black; border-top: none; z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
+        .suggestion-item { padding: 14px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.85rem; text-align: left; color: black; }
+        
+        button { background: black; color: white; border: 1px solid black; padding: 18px; width: 100%; cursor: pointer; font-size: 1rem; margin-bottom: 12px; transition: 0.2s; border-radius: 0; }
+        .secondary-btn { background: white; color: black; }
+        .surprise-btn { background: #FF3B30; border-color: #FF3B30; font-weight: bold; margin-top: 10px; }
+        
+        /* Distance Toggle */
+        .dist-label { font-size: 0.7rem; font-weight: bold; margin-bottom: 10px; color: #666; text-transform: uppercase; }
+        .dist-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+        .dist-btn { padding: 12px 5px; border: 1px solid black; background: white; cursor: pointer; font-size: 0.75rem; color: black; font-weight: bold; }
+        .dist-btn.active { background: black; color: white; }
+
+        /* Verdict Card */
+        .spot-card { border: 2px solid black; padding: 35px 25px; margin-top: 10px; text-align: left; position: relative; background: #fff; }
+        .best-badge { position: absolute; top: -12px; left: 20px; background: #FF3B30; color: white; padding: 4px 12px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
+        .rating-tag { font-size: 0.9rem; color: #f1c40f; font-weight: bold; margin-bottom: 5px; display: block; }
+        .summary-text { font-size: 0.85rem; color: #444; line-height: 1.4; margin: 10px 0; font-style: italic; }
+        .action-btn { display: block; text-align: center; padding: 16px; margin-top: 15px; border: 1px solid black; text-decoration: none; color: white; background: black; font-weight: bold; font-size: 0.9rem; }
+        
+        /* Loading Styles */
+        .smiley-loader { font-size: 2.5rem; margin-bottom: 15px; display: block; height: 50px; }
+        .joke-container { font-style: italic; color: #777; padding: 0 20px; line-height: 1.5; font-size: 1rem; min-height: 80px; }
+        .loading-header { font-weight: bold; color: #000; margin-bottom: 10px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;}
+    </style>
+</head>
+<body>
+
+    <div id="app-container" class="fade-in">
+        <div id="screen-content">
+            <h1>THE HUNGER FIX</h1>
+            <div class="input-wrapper">
+                <input type="text" id="cityInput" placeholder="Where are you? (City, State)" autocomplete="off" oninput="debounceSearch()">
+                <div id="suggestions"></div>
+            </div>
+            <button onclick="handleNext()">Next</button>
+            <button class="secondary-btn" onclick="locateMe()">Locate Me</button>
+        </div>
+    </div>
+
+    <script>
+        const GOOGLE_API_KEY = "AIzaSyBkYWkdgAQ0hB_hlFmTLcJxm0dvDDO7JVA";
+
+        const container = document.getElementById('app-container');
+        const screen = document.getElementById('screen-content');
+        let lat = "", lon = "";
+        let selectedVibe = "";
+        let userLimitDist = 5000; 
+        let blacklist = new Set();
+        
+        const distanceTiers = [5000, 15000, 30000, 80000];
+        let activeTierIndex = 0;
+        let activeSearchType = "";
+
+        const smileys = ["🤔", "🧐", "😋", "🤤", "🍕", "🌮", "🍣", "🥗"];
+        const jokes = {
+            'a date': [
+                "Checking for spots quiet enough to hear your own heart beating...",
+                "Searching for a place where the lighting makes everyone look like a 10.",
+                "Finding a venue where 'split the bill' won't ruin the second date...",
+                "Locating a spot that says 'I have great taste' but 'I’m not trying too hard'."
+            ],
+            'family': [
+                "Finding a floor durable enough for a juice box explosion...",
+                "Locating a spot that considers 'screaming' a part of the ambiance.",
+                "Searching for a restaurant with a 5-star rating and 5-star high chairs.",
+                "Looking for a table far, far away from the quiet couple on a date."
+            ],
+            'yourself': [
+                "Finding a spot where your phone is the only company you need...",
+                "Locating a table where the only person you have to share with is yourself.",
+                "Searching for a place that won't ask 'just one?' with a look of pity.",
+                "Picking a spot where you can eat like nobody is watching (because they aren't)."
+            ]
+        };
+
+        const cuisineMapping = {
+            'Mexican': 'mexican_restaurant', 'Indian': 'indian_restaurant',
+            'Italian': 'italian_restaurant', 'Asian': 'asian_restaurant',
+            'French': 'french_restaurant', 'Mediterranean': 'mediterranean_restaurant',
+            'Burgers': 'hamburger_restaurant', 'Sushi': 'sushi_restaurant'
+        };
+
+        function handleNext() { 
+            if (!lat) return alert("Select a city first!"); 
+            showWhoIsGoing(); 
+        }
+
+        function showWhoIsGoing() { 
+            transition(() => { 
+                screen.innerHTML = `
+                    <h1>Who's going?</h1>
+                    <button onclick="showCuisineFilters('a date')">A Date</button>
+                    <button onclick="showCuisineFilters('yourself')">Just Me</button>
+                    <button onclick="showCuisineFilters('family')">With Family</button>
+                `; 
+            }); 
+        }
+
+        function showCuisineFilters(vibe) {
+            selectedVibe = vibe || selectedVibe;
+            transition(() => {
+                screen.innerHTML = `
+                    <h1>The Vibe</h1>
+                    <div class="dist-label">Starting Radius</div>
+                    <div class="dist-toggle">
+                        <button class="dist-btn ${userLimitDist === 5000 ? 'active' : ''}" onclick="userLimitDist=5000; showCuisineFilters()">5 km</button>
+                        <button class="dist-btn ${userLimitDist === 15000 ? 'active' : ''}" onclick="userLimitDist=15000; showCuisineFilters()">15 km</button>
+                        <button class="dist-btn ${userLimitDist === 30000 ? 'active' : ''}" onclick="userLimitDist=30000; showCuisineFilters()">30 km</button>
+                    </div>
+                    ${Object.keys(cuisineMapping).map(opt => `<button onclick="startSearch('${opt}')">${opt}</button>`).join("")}
+                    <button class="surprise-btn" onclick="surpriseMe()">✨ Surprise Me</button>
+                    <button class="back-link" onclick="showWhoIsGoing()">Back</button>
+                `;
+            });
+        }
+
+        function surpriseMe() {
+            const keys = Object.keys(cuisineMapping);
+            startSearch(keys[Math.floor(Math.random() * keys.length)]);
+        }
+
+        function startSearch(type) {
+            activeSearchType = type;
+            activeTierIndex = distanceTiers.indexOf(userLimitDist);
+            runTieredSearch();
+        }
+
+        async function runTieredSearch() {
+            const currentDist = distanceTiers[activeTierIndex];
+            const vibeJokes = jokes[selectedVibe];
+            const randomJoke = vibeJokes[Math.floor(Math.random() * vibeJokes.length)];
+
+            let smileyIdx = 0;
+            screen.innerHTML = `
+                <div class="smiley-loader" id="loader-icon">🤔</div>
+                <div class="loading-header">Fixing your hunger in ${currentDist/1000}km...</div>
+                <div class="joke-container" id="joke-text">"${randomJoke}"</div>
+            `;
+            
+            const loaderInterval = setInterval(() => {
+                smileyIdx = (smileyIdx + 1) % smileys.length;
+                const icon = document.getElementById('loader-icon');
+                if(icon) icon.innerText = smileys[smileyIdx];
+            }, 300);
+
+            const startTime = Date.now();
+            let result = null;
+
+            try {
+                const url = 'https://places.googleapis.com/v1/places:searchNearby';
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Goog-Api-Key': GOOGLE_API_KEY,
+                        'X-Goog-FieldMask': 'places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.id,places.editorialSummary'
+                    },
+                    body: JSON.stringify({
+                        includedTypes: [cuisineMapping[activeSearchType]],
+                        maxResultCount: 20,
+                        locationRestriction: { circle: { center: { latitude: lat, longitude: lon }, radius: currentDist } }
+                    })
+                });
+                const data = await response.json();
+                const available = (data.places || []).filter(place => !blacklist.has(place.id));
+                if (available.length > 0) result = available[Math.floor(Math.random() * available.length)];
+            } catch (e) { console.error(e); }
+
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(2500 - elapsed, 0);
+
+            setTimeout(() => {
+                clearInterval(loaderInterval);
+                if (result) {
+                    showVerdict(result);
+                } else if (activeTierIndex < distanceTiers.length - 1) {
+                    activeTierIndex++;
+                    runTieredSearch();
+                } else {
+                    screen.innerHTML = `<h1>Empty Plate</h1><p>Nothing found within 80km.</p><button onclick="blacklist.clear(); showCuisineFilters();">Reset</button>`;
+                }
+            }, remaining);
+        }
+
+        function showVerdict(place) {
+            transition(() => {
+                screen.innerHTML = `
+                    <h1>THE FIX</h1>
+                    <div class="spot-card">
+                        <div class="best-badge">${activeSearchType}</div>
+                        <span class="rating-tag">⭐ ${place.rating || 'N/A'}</span>
+                        <h2 style="margin: 0 0 5px 0;">${place.displayName.text}</h2>
+                        <p class="summary-text">"${place.editorialSummary?.text || 'A highly-rated local favorite.'}"</p>
+                        <a href="${place.googleMapsUri}" target="_blank" class="action-btn">📍 Navigate There</a>
+                    </div>
+                    <button class="shuffle-btn" onclick="blacklist.add('${place.id}'); runTieredSearch();">Show Me Another</button>
+                    <button class="back-link" onclick="showCuisineFilters()">Change Vibe</button>
+                `;
+            });
+        }
+
+        function transition(cb) { container.classList.add('fade-out'); setTimeout(() => { cb(); container.classList.remove('fade-out'); container.classList.add('fade-in'); }, 400); }
+        function debounceSearch() { 
+            clearTimeout(this.timeout); 
+            this.timeout = setTimeout(async () => { 
+                const val = document.getElementById('cityInput').value; 
+                if(val.length < 3) return;
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${val}`); 
+                const data = await res.json(); 
+                const list = document.getElementById('suggestions'); 
+                list.innerHTML = ""; list.style.display = 'block'; 
+                data.forEach(item => { 
+                    const div = document.createElement('div'); div.className = 'suggestion-item'; div.innerText = item.display_name; 
+                    div.onclick = () => { document.getElementById('cityInput').value = item.display_name; lat = parseFloat(item.lat); lon = parseFloat(item.lon); list.style.display = 'none'; }; 
+                    list.appendChild(div); 
+                }); 
+            }, 300); 
+        }
+        async function locateMe() { 
+            navigator.geolocation.getCurrentPosition(async (pos) => { 
+                lat = pos.coords.latitude; lon = pos.coords.longitude; 
+                document.getElementById('cityInput').value = "My Location"; 
+                handleNext();
+            }); 
+        }
+    </script>
+</body>
+</html>
