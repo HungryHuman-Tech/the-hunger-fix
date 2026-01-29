@@ -2,43 +2,65 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>THE HUNGER FIX</title>
     <style>
         body, html { 
-            margin: 0; padding: 0; height: 100%; 
-            display: flex; justify-content: center; align-items: center; 
+            margin: 0; padding: 0; min-height: 100dvh; 
+            display: flex; justify-content: center; align-items: flex-start; 
             background-color: #ffffff; color: #000000; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            overflow: hidden; 
+            overflow-x: hidden;
+            touch-action: manipulation;
         }
-        #app-container { text-align: center; width: 95%; max-width: 400px; min-width: 320px; transition: all 0.4s ease; padding-bottom: 80px; }
+
+        #app-container { 
+            text-align: center; width: 95%; max-width: 400px; 
+            padding-top: 30px;
+            padding-bottom: 140px; 
+            transition: all 0.4s ease; 
+        }
+
         .fade-in { opacity: 1; transform: translateY(0); transition: 0.4s; }
         .fade-out { opacity: 0; transform: translateY(-20px); transition: 0.4s; }
         
         h1 { font-weight: 800; margin-bottom: 1.5rem; font-size: 1.6rem; letter-spacing: 0.5px; text-transform: uppercase; }
-        input { width: 100%; padding: 18px; border: 1px solid black; margin-bottom: 1rem; box-sizing: border-box; font-size: 1rem; text-align: center; outline: none; border-radius: 0; }
         
-        /* Fixed Address Suggestions */
-        #suggestions { position: absolute; width: 100%; background: white; border: 1px solid black; border-top: none; z-index: 100; max-height: 250px; overflow-y: auto; display: none; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .suggestion-item { padding: 14px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.85rem; text-align: left; line-height: 1.4; }
-        .suggestion-item:hover { background: #f9f9f9; }
+        input { 
+            width: 100%; padding: 18px; border: 1px solid black; 
+            margin-bottom: 1rem; box-sizing: border-box; 
+            font-size: 16px; text-align: center; outline: none; 
+            border-radius: 0; -webkit-appearance: none;
+        }
+
+        #suggestions { 
+            position: absolute; width: 100%; background: white; 
+            border: 1px solid black; border-top: none; z-index: 100; 
+            max-height: 200px; overflow-y: auto; display: none; 
+        }
+
+        .suggestion-item { padding: 14px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.85rem; text-align: left; }
         
         button { background: black; color: white; border: 1px solid black; padding: 18px; width: 100%; cursor: pointer; font-size: 1rem; margin-bottom: 12px; transition: 0.2s; border-radius: 0; font-weight: bold; }
         .secondary-btn { background: white; color: black; }
         .shuffle-btn { background: #FF3B30; border-color: #FF3B30; color: white; margin-top: 10px; }
 
-        .filter-section { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-        .dist-label { font-size: 0.7rem; font-weight: bold; margin-bottom: 8px; color: #000; text-transform: uppercase; letter-spacing: 1px; }
+        .filter-section { 
+            margin-bottom: 25px; 
+            background: #ffffff;
+            padding: 15px;
+            border: 2px solid #000;
+        }
+        .dist-label { font-size: 0.75rem; font-weight: 900; margin-bottom: 12px; color: #000; text-transform: uppercase; letter-spacing: 1px; }
         .dist-toggle { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 15px; }
-        .dist-btn { padding: 10px 2px; border: 1px solid black; background: white; cursor: pointer; font-size: 0.7rem; font-weight: bold; color: #000; }
+        .dist-btn { padding: 12px 2px; border: 1px solid black; background: white; cursor: pointer; font-size: 0.7rem; font-weight: bold; color: #000; }
         .dist-btn.active { background: black; color: white; }
 
-        .toggle-container { display: flex; justify-content: space-between; align-items: center; padding: 0 10px; }
-        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .toggle-container { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
         input:checked + .slider { background-color: #000; }
         input:checked + .slider:before { transform: translateX(20px); }
 
@@ -48,20 +70,27 @@
         
         .back-link { display: block; margin-top: 25px; text-decoration: underline; cursor: pointer; font-size: 0.8rem; color: #000; border: none; background: none; width: 100%; }
         
-        /* Slower Flicker Loading */
         .smiley-flicker { font-size: 4rem; margin-bottom: 20px; display: inline-block; }
         .joke-container { font-style: italic; color: #777; padding: 0 20px; line-height: 1.5; font-size: 1rem; min-height: 80px; }
         .radius-pulse { font-size: 0.75rem; font-weight: 800; color: #FF3B30; letter-spacing: 1.5px; margin-bottom: 5px; }
 
-        /* History UI */
-        .history-bar-btn { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 3px solid black; padding: 18px; font-size: 0.8rem; font-weight: 900; letter-spacing: 2px; z-index: 150; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
-        #history-count { background: #FF3B30; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; justify-content: center; align-items: center; font-size: 0.7rem; }
+        /* HISTORY BAR - FIXED COLORS */
+        .history-bar-btn { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            background: #ffffff; border-top: 3px solid black; 
+            padding: 22px; z-index: 150; cursor: pointer; 
+            display: flex; justify-content: center; align-items: center; gap: 10px; 
+            border-left: none; border-right: none; border-bottom: none;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.05);
+        }
+        .history-bar-btn span { color: #000000 !important; font-size: 0.85rem; font-weight: 900; letter-spacing: 2px; }
+        #history-count { background: #000000; color: #ffffff; border-radius: 50%; width: 22px; height: 22px; display: flex; justify-content: center; align-items: center; font-size: 0.7rem; font-weight: bold; }
         
-        #history-panel { position: fixed; bottom: -450px; left: 0; right: 0; height: 400px; background: white; border-top: 3px solid black; transition: bottom 0.4s ease-out; z-index: 200; padding: 20px; overflow-y: auto; text-align: left; }
+        #history-panel { position: fixed; bottom: -500px; left: 0; right: 0; height: 450px; background: white; border-top: 3px solid black; transition: bottom 0.4s ease-out; z-index: 200; padding: 20px; overflow-y: auto; text-align: left; }
         #history-panel.open { bottom: 0; }
         .history-item { padding: 15px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         
-        @keyframes pulse-highlight { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+        @keyframes pulse-highlight { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         .pulse-active { animation: pulse-highlight 0.4s ease-out; }
     </style>
 </head>
@@ -80,18 +109,18 @@
     </div>
 
     <button id="history-btn" class="history-bar-btn" onclick="toggleHistory()" style="display:none;">
-        <span>🕒 HISTORY</span>
+        <span>HISTORY</span>
         <div id="history-count">0</div>
     </button>
     
     <div id="history-panel">
-        <h3 style="margin-top:0; font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid black; padding-bottom: 10px;">Your Collection</h3>
+        <h3 style="margin-top:0; font-size: 0.9rem; text-transform: uppercase; border-bottom: 2px solid black; padding-bottom: 10px;">Your Collection</h3>
         <div id="history-list"></div>
-        <button class="back-link" onclick="toggleHistory()" style="margin-top:20px; font-weight: bold;">Close History</button>
+        <button class="back-link" onclick="toggleHistory()" style="margin-top:20px; font-weight: 800; text-transform: uppercase;">Close History</button>
     </div>
 
     <script>
-        const GOOGLE_API_KEY = "AIzaSyBkYWkdgAQ0hB_hlFmTLcJxm0dvDDO7JVA";
+        const GOOGLE_API_KEY = "YOUR_GOOGLE_PLACES_API_KEY_HERE";
 
         const container = document.getElementById('app-container');
         const screen = document.getElementById('screen-content');
@@ -103,9 +132,9 @@
         let flickerInterval;
 
         const distanceTiers = [5000, 15000, 25000, 35000];
-        const searchEmojis = ["🍕", "🍔", "🌮", "🍣", "🍦", "🥪", "🍳", "🍜", "🍩", "🥨", "🍱"];
-        const errorEmojis = ["💀", "🫠", "📉", "🫥", "🚬"];
-        const globalJokes = ["Bribing the chef...", "Consulting the burger gods...", "Searching for hidden fries...", "Negotiating with delivery drivers...", "Checking the crumb count..."];
+        const searchEmojis = ["🍕", "🍔", "🌮", "🍣", "🍦", "🥪", "🍳", "🍜", "🍩", "🍱"];
+        const errorEmojis = ["💀", "🫠", "📉"];
+        const globalJokes = ["Bribing the chef...", "Consulting the burger gods...", "Asking the satellite to zoom in..."];
 
         const cuisineMapping = {
             'Comfort': ['hamburger_restaurant', 'steak_house', 'pizza_restaurant'],
@@ -128,7 +157,7 @@
         function stopFlicker() { if (flickerInterval) clearInterval(flickerInterval); }
 
         function handleNext() { 
-            if (!lat) return alert("Please select an address from the suggestions!"); 
+            if (!lat) return alert("Please select an address from the list!"); 
             showCuisineSelection(); 
         }
 
@@ -260,30 +289,22 @@
             this.timeout = setTimeout(async () => { 
                 const val = document.getElementById('cityInput').value; 
                 if(val.length < 3) return;
-                
-                // ADDED addressdetails=1 to capture house numbers
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(val)}`); 
                 const data = await res.json(); 
                 const list = document.getElementById('suggestions'); 
                 list.innerHTML = ""; 
-                
                 if (data.length > 0) {
                     list.style.display = 'block'; 
                     data.forEach(item => { 
                         const div = document.createElement('div'); 
                         div.className = 'suggestion-item'; 
-                        
-                        // Construct display string manually to ensure house number shows up first if present
                         const address = item.address;
                         const houseNum = address.house_number || "";
                         const road = address.road || address.pedestrian || "";
                         const city = address.city || address.town || address.village || "";
-                        
                         const mainLabel = houseNum ? `${houseNum} ${road}` : item.display_name.split(',')[0];
                         const subLabel = city ? `, ${city}` : "";
-
                         div.innerText = mainLabel + subLabel; 
-                        
                         div.onclick = () => { 
                             document.getElementById('cityInput').value = mainLabel + subLabel; 
                             lat = parseFloat(item.lat); 
@@ -293,7 +314,7 @@
                         list.appendChild(div); 
                     });
                 }
-            }, 500); // 500ms delay to prevent heavy API calls
+            }, 500); 
         }
 
         function locateMe() { 
@@ -301,7 +322,7 @@
                 lat = pos.coords.latitude; 
                 lon = pos.coords.longitude; 
                 document.getElementById('cityInput').value = "My Current Location"; 
-            }, () => alert("Location access denied. Please type your address.")); 
+            }, () => alert("Location access denied.")); 
         }
     </script>
 </body>
