@@ -3,7 +3,7 @@
  * Removed: 'store', 'fish_market', 'grocery_store', 'hotel', 'lodging'
  * Focused strictly on restaurant and dining sub-types.
  */
-export const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY";
+export const GOOGLE_API_KEY = "AIzaSyBkYWkdgAQ0hB_hlFmTLcJxm0dvDDO7JVA";
 
 export const cuisineMapping = {
     'Comfort': [
