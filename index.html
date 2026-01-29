@@ -5,20 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>THE HUNGER FIX</title>
     <style>
-        /* FULL DYNAMIC CENTERING */
+        /* DYNAMIC SCROLLABLE CENTERING */
         body, html { 
-            margin: 0; padding: 0; height: 100%; width: 100%;
+            margin: 0; padding: 0; width: 100%;
             background-color: #ffffff; color: #000000; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            overflow: hidden;
             display: flex; justify-content: center; align-items: center;
+            min-height: 100dvh; /* Use dynamic viewport height */
+            overflow-x: hidden;
+            overflow-y: auto; /* Re-enabled scrolling */
             touch-action: manipulation;
         }
 
         #app-container { 
             text-align: center; width: 90%; max-width: 400px; 
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            min-height: 100%;
+            padding: 40px 0 120px 0; /* Extra bottom padding for History Bar */
             transition: all 0.4s ease; 
         }
 
@@ -48,18 +50,23 @@
         .secondary-btn { background: white; color: black; }
         .shuffle-btn { background: #FF3B30; border-color: #FF3B30; color: white; margin-top: 10px; }
 
-        .filter-section { margin-bottom: 25px; padding: 15px; border: 2px solid #000; background: #fff; width: 100%; box-sizing: border-box; }
-        .dist-label { font-size: 0.75rem; font-weight: 900; margin-bottom: 12px; text-transform: uppercase; }
-        .dist-toggle { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 15px; }
-        .dist-btn { padding: 12px 2px; border: 1px solid black; background: white; font-size: 0.7rem; font-weight: bold; cursor: pointer; }
-        .dist-btn.active { background: black; color: white; }
+        /* BLACK FILTER SECTION */
+        .filter-section { 
+            margin-bottom: 25px; padding: 20px; 
+            background: #000000; color: #ffffff; /* Inverted Theme */
+            width: 100%; box-sizing: border-box; 
+        }
+        .dist-label { font-size: 0.75rem; font-weight: 900; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .dist-toggle { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+        .dist-btn { padding: 12px 2px; border: 1px solid white; background: transparent; color: white; font-size: 0.7rem; font-weight: bold; cursor: pointer; }
+        .dist-btn.active { background: white; color: black; }
 
         .toggle-container { display: flex; justify-content: space-between; align-items: center; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; }
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
-        input:checked + .slider { background-color: #000; }
+        input:checked + .slider { background-color: #FF3B30; }
         input:checked + .slider:before { transform: translateX(20px); }
 
         .spot-card { border: 2px solid black; padding: 35px 20px; text-align: left; position: relative; background: #fff; margin: 10px 0; width: 100%; box-sizing: border-box; }
@@ -122,49 +129,23 @@
         const errorEmojis = ["💀", "🫠", "📉", "✖️", "🚩"];
 
         const searchJokes = [
-            "Consulting the burger gods...",
-            "Searching for hidden fries...",
-            "Negotiating with delivery drivers...",
-            "Bribing the local chefs...",
-            "Scanning the flavor horizon...",
-            "Asking the microwave for advice...",
-            "Checking under the couch for snacks...",
-            "Following the scent of garlic...",
-            "Calculating the perfect bite ratio...",
-            "Convincing the GPS you're starving...",
-            "Updating the satellite on your cravings...",
-            "Deploying the spice-seeking drones...",
-            "Waking up the kitchen staff...",
-            "Scanning for artisanal breadcrumbs...",
-            "Checking if the pizza oven is preheated...",
-            "Translating 'I'm hungry' into satellite...",
-            "Measuring the distance to dessert...",
-            "Syncing with the local taco trucks...",
-            "Evaluating cheese-to-crust variables...",
-            "Finalizing the flavor profile..."
+            "Consulting the burger gods...", "Searching for hidden fries...", "Negotiating with delivery drivers...",
+            "Bribing the local chefs...", "Scanning the flavor horizon...", "Asking the microwave for advice...",
+            "Checking under the couch for snacks...", "Following the scent of garlic...", "Calculating the perfect bite ratio...",
+            "Convincing the GPS you're starving...", "Updating the satellite on your cravings...", "Deploying the spice-seeking drones...",
+            "Waking up the kitchen staff...", "Scanning for artisanal breadcrumbs...", "Checking if the pizza oven is preheated...",
+            "Translating 'I'm hungry' into satellite...", "Measuring the distance to dessert...", "Syncing with the local taco trucks...",
+            "Evaluating cheese-to-crust variables...", "Finalizing the flavor profile..."
         ];
 
         const errorJokes = [
-            "Even the rats are hungry here. No spots found.",
-            "Looks like a culinary desert. Try a wider scan.",
-            "The fridge is looking better than these results.",
-            "Our satellite is hangry and refusing to work.",
-            "Everything is closed. Maybe a nap instead?",
-            "The chefs have gone on strike. Try again.",
-            "GPS lost its appetite. Re-centering...",
-            "Zero flavor detected in this radius.",
-            "The spice must flow... but it isn't flowing here.",
-            "Did you enter a ghost town? No results.",
-            "Even the vending machines are empty.",
-            "A culinary void has been detected.",
-            "Error: Hunger levels too high for this area.",
-            "The kitchen is dark. The lights are out.",
-            "No food found. Sending thoughts and prayers.",
-            "You've reached the edge of the flavor world.",
-            "The delivery drivers are all sleeping.",
-            "Try moving 5 feet to the left? (Just kidding).",
-            "This area is strictly for water drinkers only.",
-            "Alert: Tactical starvation imminent."
+            "Even the rats are hungry here. No spots found.", "Looks like a culinary desert. Try a wider scan.", "The fridge is looking better than these results.",
+            "Our satellite is hangry and refusing to work.", "Everything is closed. Maybe a nap instead?", "The chefs have gone on strike. Try again.",
+            "GPS lost its appetite. Re-centering...", "Zero flavor detected in this radius.", "The spice must flow... but it isn't flowing here.",
+            "Did you enter a ghost town? No results.", "Even the vending machines are empty.", "A culinary void has been detected.",
+            "Error: Hunger levels too high for this area.", "The kitchen is dark. The lights are out.", "No food found. Sending thoughts and prayers.",
+            "You've reached the edge of the flavor world.", "The delivery drivers are all sleeping.", "Try moving 5 feet to the left? (Just kidding).",
+            "This area is strictly for water drinkers only.", "Alert: Tactical starvation imminent."
         ];
 
         const cuisineMapping = {
@@ -180,9 +161,7 @@
             stopFlicker();
             const el = document.getElementById('flicker-target');
             if(!el) return;
-            flickerInterval = setInterval(() => {
-                el.innerText = emojiSet[Math.floor(Math.random() * emojiSet.length)];
-            }, 400); 
+            flickerInterval = setInterval(() => { el.innerText = emojiSet[Math.floor(Math.random() * emojiSet.length)]; }, 400); 
         }
 
         function stopFlicker() { if (flickerInterval) clearInterval(flickerInterval); }
@@ -275,8 +254,7 @@
             if (history.find(h => h.id === place.id)) return;
             history.unshift({ ...place, category: type });
             if (history.length > 5) history.pop();
-            const btn = document.getElementById('history-btn');
-            btn.style.display = 'flex';
+            document.getElementById('history-btn').style.display = 'flex';
             document.getElementById('history-count').innerText = history.length;
             updateHistoryUI();
         }
@@ -329,14 +307,9 @@
                         const city = a.city || a.town || a.village || "";
                         const state = a.state || a.province || "";
                         const country = a.country || "";
-                        const displayParts = [street, city, state, country].filter(part => part.trim() !== "");
-                        const label = displayParts.join(", ");
+                        const label = [street, city, state, country].filter(part => part.trim() !== "").join(", ");
                         div.innerText = label; 
-                        div.onclick = () => { 
-                            document.getElementById('cityInput').value = label; 
-                            lat = parseFloat(item.lat); lon = parseFloat(item.lon); 
-                            list.style.display = 'none'; 
-                        }; 
+                        div.onclick = () => { document.getElementById('cityInput').value = label; lat = parseFloat(item.lat); lon = parseFloat(item.lon); list.style.display = 'none'; }; 
                         list.appendChild(div); 
                     });
                 }
