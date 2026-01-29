@@ -1,6 +1,6 @@
 /**
- * THE HUNGER FIX - MAIN LOGIC (app.js)
- * This file handles API communication, location logic, and UI transitions.
+ * THE HUNGER FIX - CORE LOGIC
+ * Features: Fisher-Yates Shuffle, Hotel/Market Filtering, and Opening Hours detection.
  */
 
 import { GOOGLE_API_KEY, cuisineMapping } from './config.js';
@@ -11,21 +11,16 @@ const container = document.getElementById('app-container');
 const screen = document.getElementById('screen-content');
 let lat = "", lon = "", userLimitDist = 15000, openNowOnly = true;
 let blacklist = new Set(), history = [], flickerInterval;
-const forbiddenKeywords = ['hotel', 'inn', 'suites', 'market', 'wholesale', 'grocery', 'liquor', 'supermarket'];
+
+// Keywords to filter out non-dining establishments
+const forbiddenKeywords = ['hotel', 'inn', 'suites', 'market', 'wholesale', 'grocery', 'liquor', 'supermarket', 'convenience', 'fish market'];
 
 // --- UTILITY FUNCTIONS ---
 
-/**
- * Clears the flickering emoji interval to save memory.
- */
 function stopFlicker() { 
     if (flickerInterval) clearInterval(flickerInterval); 
 }
 
-/**
- * Cycles through emojis at 400ms intervals to create a loading animation.
- * @param {Array} emojiSet - The array of emojis to cycle.
- */
 function startFlicker(emojiSet) {
     stopFlicker();
     const el = document.getElementById('flicker-target');
@@ -35,10 +30,6 @@ function startFlicker(emojiSet) {
     }, 400); 
 }
 
-/**
- * Handles the screen transition animation (Slide out, update UI, Slide in).
- * @param {Function} cb - The function that renders the new screen.
- */
 function transition(cb) {
     container.classList.add('fade-out');
     setTimeout(() => { 
@@ -48,11 +39,8 @@ function transition(cb) {
     }, 400);
 }
 
-// --- UI RENDERING FUNCTIONS ---
+// --- UI RENDERING ---
 
-/**
- * Renders the filter settings and cuisine options screen.
- */
 function showCuisineSelection() {
     transition(() => {
         screen.innerHTML = `
@@ -82,44 +70,24 @@ function showCuisineSelection() {
     });
 }
 
-/**
- * Attaches event listeners to the buttons generated in showCuisineSelection.
- */
 function setupCuisineListeners() {
-    // Distance buttons (KM)
     document.querySelectorAll('.dist-btn').forEach(b => {
-        b.onclick = () => { 
-            userLimitDist = parseInt(b.dataset.dist); 
-            showCuisineSelection(); 
-        };
+        b.onclick = () => { userLimitDist = parseInt(b.dataset.dist); showCuisineSelection(); };
     });
-
-    // Open Now toggle
-    document.getElementById('openNowCheck').onchange = (e) => {
-        openNowOnly = e.target.checked;
-    };
-
-    // Cuisine selection buttons
+    document.getElementById('openNowCheck').onchange = (e) => { openNowOnly = e.target.checked; };
     document.querySelectorAll('.cuisine-btn').forEach(b => {
         b.onclick = () => startSearch(b.dataset.type);
     });
-
-    // Surprise button
     document.getElementById('surpriseBtn').onclick = () => startSearch('Surprise');
 }
 
-// --- CORE SEARCH & SHUFFLE LOGIC ---
+// --- SEARCH & FILTER LOGIC ---
 
-/**
- * Calls Google Places API and implements Option 2 (Fisher-Yates Shuffle)
- * to ensure variety and prevent chains from dominating results.
- */
 async function startSearch(type, currentTierIdx = null) {
     const tiers = [5000, 15000, 25000, 35000];
     if (currentTierIdx === null) currentTierIdx = tiers.indexOf(userLimitDist);
     const currentDist = tiers[currentTierIdx];
     
-    // UI Loading state
     screen.innerHTML = `
         <div><span id="flicker-target" class="smiley-flicker">🍕</span></div>
         <div class="joke-container">"${searchJokes[Math.floor(Math.random() * searchJokes.length)]}"</div>
@@ -136,6 +104,7 @@ async function startSearch(type, currentTierIdx = null) {
             headers: { 
                 'Content-Type': 'application/json', 
                 'X-Goog-Api-Key': GOOGLE_API_KEY, 
+                // CRITICAL: Requesting currentOpeningHours enables the "Open Now" logic
                 'X-Goog-FieldMask': 'places.displayName,places.rating,places.googleMapsUri,places.id,places.currentOpeningHours' 
             },
             body: JSON.stringify({
@@ -148,27 +117,33 @@ async function startSearch(type, currentTierIdx = null) {
         });
 
         const data = await response.json();
-        let placeList = (data.places || []).filter(p => !blacklist.has(p.id));
         
+        // 1. Filter out Blacklist and Forbidden keywords (Hotels/Markets)
+        let placeList = (data.places || []).filter(p => {
+            const name = p.displayName.text.toLowerCase();
+            const isForbidden = forbiddenKeywords.some(word => name.includes(word));
+            return !blacklist.has(p.id) && !isForbidden;
+        });
+        
+        // 2. Filter by Open Status
         if (openNowOnly) {
             placeList = placeList.filter(p => p.currentOpeningHours?.openNow === true);
         }
 
-        // --- OPTION 2: THE SHUFFLE ALGORITHM ---
+        // 3. Fisher-Yates Shuffle for true variety
         if (placeList.length > 0) {
-            // Fisher-Yates Shuffle ensures total randomness among the 20 results
             for (let i = placeList.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [placeList[i], placeList[j]] = [placeList[j], placeList[i]];
             }
 
             stopFlicker();
-            // Pick the first result after the shuffle
             const place = placeList[0];
+            const statusText = place.currentOpeningHours?.openNow ? "OPEN NOW" : "CLOSED";
+            
             addToHistory(place, searchType);
-            showVerdict(place, searchType);
+            showVerdict(place, searchType, statusText);
         } 
-        // Recursion logic: If empty, try the next distance tier
         else if (currentTierIdx < (tiers.length - 1)) {
             return startSearch(type, currentTierIdx + 1);
         } 
@@ -178,16 +153,13 @@ async function startSearch(type, currentTierIdx = null) {
         }
     } catch (e) { 
         stopFlicker(); 
-        showError("Network error. The internet is as hungry as you are."); 
+        showError("Network error. Your signal is hangry."); 
     }
 }
 
-// --- FINAL VERDICT & ERROR SCREENS ---
+// --- VERDICT & HISTORY ---
 
-/**
- * Displays the winning restaurant card.
- */
-function showVerdict(place, type) {
+function showVerdict(place, type, statusText) {
     transition(() => {
         screen.innerHTML = `
             <h1>THE FIX</h1>
@@ -195,22 +167,19 @@ function showVerdict(place, type) {
                 <div class="best-badge">${type}</div>
                 <h2>${place.displayName.text}</h2>
                 <p>Rating: ⭐ ${place.rating || 'New'}</p>
+                <p style="font-weight: bold; color: ${statusText === 'OPEN NOW' ? '#28a745' : '#FF3B30'}">
+                    ${statusText}
+                </p>
                 <a href="${place.googleMapsUri}" target="_blank" class="action-btn">LET'S GO</a>
             </div>
             <button id="keepLookingBtn" class="back-link">Keep Looking</button>
             <button id="changeCraveBtn" class="back-link" style="text-decoration:none;">← Change Craving</button>
         `;
-        document.getElementById('keepLookingBtn').onclick = () => { 
-            blacklist.add(place.id); 
-            startSearch(type); 
-        };
+        document.getElementById('keepLookingBtn').onclick = () => { blacklist.add(place.id); startSearch(type); };
         document.getElementById('changeCraveBtn').onclick = () => showCuisineSelection();
     });
 }
 
-/**
- * Displays the error screen when no results are found.
- */
 function showError(msg) {
     transition(() => {
         screen.innerHTML = `
@@ -224,11 +193,6 @@ function showError(msg) {
     });
 }
 
-// --- HISTORY LOGIC ---
-
-/**
- * Adds a restaurant to the persistent history bar.
- */
 function addToHistory(place, type) {
     if (history.find(h => h.id === place.id)) return;
     history.unshift({ ...place, category: type });
@@ -245,30 +209,17 @@ function addToHistory(place, type) {
     `).join('');
 }
 
-// --- INITIAL EVENT LISTENERS ---
+// --- INITIALIZERS ---
 
-document.getElementById('findFoodBtn').onclick = () => { 
-    if (!lat) return alert("Please select a location!"); 
-    showCuisineSelection(); 
-};
-
+document.getElementById('findFoodBtn').onclick = () => { if (!lat) return alert("Select location!"); showCuisineSelection(); };
 document.getElementById('locateMeBtn').onclick = () => {
     navigator.geolocation.getCurrentPosition(async (pos) => { 
-        lat = pos.coords.latitude; 
-        lon = pos.coords.longitude; 
+        lat = pos.coords.latitude; lon = pos.coords.longitude; 
         document.getElementById('cityInput').value = "Your Current Location"; 
     });
 };
-
-document.getElementById('history-btn').onclick = () => {
-    document.getElementById('history-panel').classList.toggle('open');
-};
-
-document.getElementById('closeHistoryBtn').onclick = () => {
-    document.getElementById('history-panel').classList.remove('open');
-};
-
-// --- ADDRESS AUTOCOMPLETE (DEBOUNCED) ---
+document.getElementById('history-btn').onclick = () => { document.getElementById('history-panel').classList.toggle('open'); };
+document.getElementById('closeHistoryBtn').onclick = () => { document.getElementById('history-panel').classList.remove('open'); };
 
 let timeout;
 document.getElementById('cityInput').oninput = (e) => {
@@ -276,28 +227,22 @@ document.getElementById('cityInput').oninput = (e) => {
     timeout = setTimeout(async () => {
         const val = e.target.value;
         if(val.length < 3) return;
-        
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(val)}`);
         const data = await res.json();
-        
         const list = document.getElementById('suggestions');
         list.innerHTML = "";
-        
         if (data.length > 0) {
             list.style.display = 'block';
             data.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'suggestion-item';
                 const a = item.address;
-                const street = (a.house_number ? a.house_number + " " : "") + (a.road || a.pedestrian || "");
-                const label = [street, a.city || a.town || a.village || "", a.state || a.province || "", a.country || ""].filter(p => p.trim() !== "").join(", ");
-                
+                const label = [(a.house_number ? a.house_number + " " : "") + (a.road || ""), a.city || a.town || "", a.country || ""].filter(p => p.trim() !== "").join(", ");
                 div.innerText = label;
                 div.onclick = (ev) => { 
                     ev.stopPropagation(); 
                     document.getElementById('cityInput').value = label; 
-                    lat = parseFloat(item.lat); 
-                    lon = parseFloat(item.lon); 
+                    lat = parseFloat(item.lat); lon = parseFloat(item.lon); 
                     list.style.display = 'none'; 
                 };
                 list.appendChild(div);
@@ -306,9 +251,6 @@ document.getElementById('cityInput').oninput = (e) => {
     }, 500);
 };
 
-// Global listener to close suggestions on outside click
 document.addEventListener('click', (e) => {
-    if (e.target.id !== 'suggestions' && e.target.id !== 'cityInput') {
-        document.getElementById('suggestions').style.display = 'none';
-    }
+    if (e.target.id !== 'suggestions' && e.target.id !== 'cityInput') document.getElementById('suggestions').style.display = 'none';
 });
