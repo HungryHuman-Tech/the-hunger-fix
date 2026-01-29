@@ -11,16 +11,16 @@
             background-color: #ffffff; color: #000000; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             display: flex; justify-content: center; align-items: center;
-            min-height: 100dvh; /* Use dynamic viewport height */
+            min-height: 100dvh;
             overflow-x: hidden;
-            overflow-y: auto; /* Re-enabled scrolling */
+            overflow-y: auto;
             touch-action: manipulation;
         }
 
         #app-container { 
             text-align: center; width: 90%; max-width: 400px; 
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            padding: 40px 0 120px 0; /* Extra bottom padding for History Bar */
+            padding: 40px 0 120px 0;
             transition: all 0.4s ease; 
         }
 
@@ -44,29 +44,32 @@
             margin-top: -1.2rem;
         }
 
-        .suggestion-item { padding: 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.85rem; text-align: left; line-height: 1.4; }
+        .suggestion-item { padding: 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.85rem; text-align: left; line-height: 1.4; color: #000; }
         
         button { background: black; color: white; border: 2px solid black; padding: 18px; width: 100%; cursor: pointer; font-size: 1rem; margin-bottom: 12px; transition: 0.2s; border-radius: 0; font-weight: bold; text-transform: uppercase; }
         .secondary-btn { background: white; color: black; }
         .shuffle-btn { background: #FF3B30; border-color: #FF3B30; color: white; margin-top: 10px; }
 
-        /* BLACK FILTER SECTION */
+        /* WHITE FILTER SECTION WITH BLACK TEXT */
         .filter-section { 
             margin-bottom: 25px; padding: 20px; 
-            background: #000000; color: #ffffff; /* Inverted Theme */
+            background: #ffffff; color: #000000; 
+            border: 2px solid #000;
             width: 100%; box-sizing: border-box; 
         }
-        .dist-label { font-size: 0.75rem; font-weight: 900; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .dist-label { font-size: 0.75rem; font-weight: 900; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; color: #000; }
         .dist-toggle { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
-        .dist-btn { padding: 12px 2px; border: 1px solid white; background: transparent; color: white; font-size: 0.7rem; font-weight: bold; cursor: pointer; }
-        .dist-btn.active { background: white; color: black; }
+        
+        /* KM BUTTON COLORS */
+        .dist-btn { padding: 12px 2px; border: 1px solid black; background: white; color: black; font-size: 0.7rem; font-weight: bold; cursor: pointer; }
+        .dist-btn.active { background: black; color: white; }
 
         .toggle-container { display: flex; justify-content: space-between; align-items: center; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
-        input:checked + .slider { background-color: #FF3B30; }
+        input:checked + .slider { background-color: #000; }
         input:checked + .slider:before { transform: translateX(20px); }
 
         .spot-card { border: 2px solid black; padding: 35px 20px; text-align: left; position: relative; background: #fff; margin: 10px 0; width: 100%; box-sizing: border-box; }
@@ -94,7 +97,7 @@
         <div id="screen-content" style="width: 100%;">
             <h1>THE HUNGER FIX</h1>
             <div class="input-wrapper">
-                <input type="text" id="cityInput" placeholder="Street, City, State..." oninput="debounceSearch()">
+                <input type="text" id="cityInput" placeholder="Street, City, State..." oninput="debounceSearch()" autocomplete="off">
                 <div id="suggestions"></div>
             </div>
             <button onclick="handleNext()">Find My Food</button>
@@ -114,7 +117,7 @@
     </div>
 
     <script>
-        const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY"; // REPLACE THIS
+        const GOOGLE_API_KEY = "AIzaSyBkYWkdgAQ0hB_hlFmTLcJxm0dvDDO7JVA"; // REPLACE THIS
 
         const container = document.getElementById('app-container');
         const screen = document.getElementById('screen-content');
@@ -127,6 +130,15 @@
 
         const searchEmojis = ["🍕", "🍔", "🌮", "🍣", "🍦", "🥪", "🍳", "🍜", "🍩", "🍱"];
         const errorEmojis = ["💀", "🫠", "📉", "✖️", "🚩"];
+
+        // CLICK OUTSIDE TO CLOSE SUGGESTIONS
+        document.addEventListener('click', function(event) {
+            const list = document.getElementById('suggestions');
+            const input = document.getElementById('cityInput');
+            if (event.target !== list && event.target !== input) {
+                list.style.display = 'none';
+            }
+        });
 
         const searchJokes = [
             "Consulting the burger gods...", "Searching for hidden fries...", "Negotiating with delivery drivers...",
@@ -309,7 +321,12 @@
                         const country = a.country || "";
                         const label = [street, city, state, country].filter(part => part.trim() !== "").join(", ");
                         div.innerText = label; 
-                        div.onclick = () => { document.getElementById('cityInput').value = label; lat = parseFloat(item.lat); lon = parseFloat(item.lon); list.style.display = 'none'; }; 
+                        div.onclick = (e) => { 
+                            e.stopPropagation(); // Prevents click-outside logic from firing early
+                            document.getElementById('cityInput').value = label; 
+                            lat = parseFloat(item.lat); lon = parseFloat(item.lon); 
+                            list.style.display = 'none'; 
+                        }; 
                         list.appendChild(div); 
                     });
                 }
