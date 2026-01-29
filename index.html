@@ -32,7 +32,6 @@
         .secondary-btn { background: white; color: black; }
         .surprise-btn { background: #FF3B30; border-color: #FF3B30; font-weight: bold; margin-top: 10px; }
         
-        /* Pulse animation for the Next button after locating */
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.03); }
@@ -73,7 +72,6 @@
     </div>
 
     <script>
-        // INSERT YOUR GOOGLE PLACES API KEY HERE
         const GOOGLE_API_KEY = "YOUR_API_KEY_HERE";
 
         const container = document.getElementById('app-container');
@@ -88,24 +86,42 @@
         let activeSearchType = "";
 
         const smileys = ["🤔", "🧐", "😋", "🤤", "🍕", "🌮", "🍣", "🥗"];
+        const errorSmileys = ["💀", "🪦", "🏜️", "🫠", "📉", "💔"];
+        
         const jokes = {
             'a date': [
-                "Checking for spots quiet enough to hear your own heart beating...",
-                "Searching for a place where the lighting makes everyone look like a 10.",
                 "Finding a venue where 'split the bill' won't ruin the second date...",
-                "Locating a spot that says 'I have great taste' but 'I’m not trying too hard'."
+                "Hunting for a place where the background music isn't just EDM remixes.",
+                "Finding a spot where you can actually pronounce the menu items.",
+                "Looking for a place where the lighting makes everyone look like a 10."
             ],
             'family': [
                 "Finding a floor durable enough for a juice box explosion...",
                 "Locating a spot that considers 'screaming' a part of the ambiance.",
                 "Searching for a restaurant with a 5-star rating and 5-star high chairs.",
-                "Looking for a table far, far away from the quiet couple on a date."
+                "Scanning for menus that double as coloring books."
             ],
             'yourself': [
                 "Finding a spot where your phone is the only company you need...",
-                "Locating a table where the only person you have to share with is yourself.",
                 "Searching for a place that won't ask 'just one?' with a look of pity.",
-                "Picking a spot where you can eat like nobody is watching (because they aren't)."
+                "Picking a spot where you can eat like nobody is watching (because they aren't).",
+                "Looking for a place where the Wi-Fi is faster than the service."
+            ],
+            'general': [
+                "Consulting the burger gods for the perfect patty...",
+                "Calculating how far I’d walk for a taco. (Hint: it’s very far).",
+                "Analyzing menus for hidden gems and overpriced toast.",
+                "Bargaining with the algorithm for shorter wait times.",
+                "Making sure the chef is having a good day.",
+                "Polishing the silverware in the cloud...",
+                "Downloading extra flavor, please wait."
+            ],
+            'error': [
+                "Our satellite hit a pigeon. Please try again.",
+                "The chef quit to become a DJ. Total disaster.",
+                "Your internet is acting hangry. Check your connection.",
+                "Google told us to go outside and touch grass. We refused.",
+                "The algorithm is on a juice cleanse and won't look at food."
             ]
         };
 
@@ -116,7 +132,6 @@
             'Burgers': 'hamburger_restaurant', 'Sushi': 'sushi_restaurant'
         };
 
-        // CLOSE SUGGESTIONS ON OUTSIDE CLICK
         document.addEventListener('click', function(event) {
             const list = document.getElementById('suggestions');
             const input = document.getElementById('cityInput');
@@ -173,14 +188,14 @@
 
         async function runTieredSearch() {
             const currentDist = distanceTiers[activeTierIndex];
-            const vibeJokes = jokes[selectedVibe];
-            const randomJoke = vibeJokes[Math.floor(Math.random() * vibeJokes.length)];
+            const pool = jokes[selectedVibe] ? [...jokes[selectedVibe], ...jokes['general']] : jokes['general'];
+            const randomJoke = pool[Math.floor(Math.random() * pool.length)];
 
             let smileyIdx = 0;
             screen.innerHTML = `
                 <div class="smiley-loader" id="loader-icon">🤔</div>
-                <div class="loading-header">Fixing your hunger in ${currentDist/1000}km...</div>
-                <div class="joke-container" id="joke-text">"${randomJoke}"</div>
+                <div class="loading-header">Searching in ${currentDist/1000}km...</div>
+                <div class="joke-container">"${randomJoke}"</div>
             `;
             
             const loaderInterval = setInterval(() => {
@@ -191,6 +206,7 @@
 
             const startTime = Date.now();
             let result = null;
+            let hasError = false;
 
             try {
                 const url = 'https://places.googleapis.com/v1/places:searchNearby';
@@ -207,23 +223,31 @@
                         locationRestriction: { circle: { center: { latitude: lat, longitude: lon }, radius: currentDist } }
                     })
                 });
+
+                if (!response.ok) throw new Error('API_FAIL');
+                
                 const data = await response.json();
                 const available = (data.places || []).filter(place => !blacklist.has(place.id));
                 if (available.length > 0) result = available[Math.floor(Math.random() * available.length)];
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                console.error(e);
+                hasError = true;
+            }
 
             const elapsed = Date.now() - startTime;
-            const remaining = Math.max(2500 - elapsed, 0);
+            const remaining = Math.max(2000 - elapsed, 0);
 
             setTimeout(() => {
                 clearInterval(loaderInterval);
-                if (result) {
+                if (hasError) {
+                    showError();
+                } else if (result) {
                     showVerdict(result);
                 } else if (activeTierIndex < distanceTiers.length - 1) {
                     activeTierIndex++;
                     runTieredSearch();
                 } else {
-                    screen.innerHTML = `<h1>Empty Plate</h1><p>Nothing found within 80km.</p><button onclick="blacklist.clear(); showCuisineFilters();">Reset</button>`;
+                    screen.innerHTML = `<h1>Empty Plate</h1><p>Nothing found within 80km.</p><button onclick="blacklist.clear(); showCuisineFilters();">Reset Search</button>`;
                 }
             }, remaining);
         }
@@ -241,6 +265,20 @@
                     </div>
                     <button style="background:#f0f0f0; color:black; border:none; margin-top:15px; font-size:0.85rem; padding:12px;" onclick="blacklist.add('${place.id}'); runTieredSearch();">Show Me Another</button>
                     <button class="back-link" onclick="showCuisineFilters()">Change Vibe</button>
+                `;
+            });
+        }
+
+        function showError() {
+            const errJoke = jokes.error[Math.floor(Math.random() * jokes.error.length)];
+            const errSmiley = errorSmileys[Math.floor(Math.random() * errorSmileys.length)];
+            transition(() => {
+                screen.innerHTML = `
+                    <div class="smiley-loader">${errSmiley}</div>
+                    <h1>FIX FAILED</h1>
+                    <div class="joke-container" style="color:#FF3B30;">"${errJoke}"</div>
+                    <button onclick="runTieredSearch()">Try Again</button>
+                    <button class="back-link" onclick="location.reload()">Start Over</button>
                 `;
             });
         }
@@ -284,33 +322,26 @@
         async function locateMe() { 
             const input = document.getElementById('cityInput');
             const nextBtn = document.getElementById('nextBtn');
-            const originalPlaceholder = input.placeholder;
-            
             input.placeholder = "Locating you...";
             input.value = ""; 
             
             navigator.geolocation.getCurrentPosition(async (pos) => { 
                 lat = pos.coords.latitude; 
                 lon = pos.coords.longitude; 
-
                 try {
-                    // Reverse Geocoding via OpenStreetMap (FREE)
                     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
                     const data = await res.json();
                     const cityName = data.address.city || data.address.town || data.address.village || "My Location";
                     const stateName = data.address.state || "";
-                    
                     input.value = stateName ? `${cityName}, ${stateName}` : cityName;
-                    input.placeholder = originalPlaceholder;
-                    
-                    // Visual cue to hit "Next"
+                    input.placeholder = "Where are you? (City, State)";
                     nextBtn.classList.add('pulse-ready');
                 } catch (e) {
                     input.value = "My Location";
                 }
             }, (error) => {
-                alert("Location access denied. Please type your city.");
-                input.placeholder = originalPlaceholder;
+                alert("Location access denied.");
+                input.placeholder = "Where are you? (City, State)";
             }); 
         }
     </script>
