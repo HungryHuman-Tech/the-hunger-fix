@@ -12,14 +12,17 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             overflow: hidden; 
         }
-        #app-container { text-align: center; width: 95%; max-width: 400px; min-width: 320px; transition: all 0.4s ease; padding-bottom: 60px; }
+        #app-container { text-align: center; width: 95%; max-width: 400px; min-width: 320px; transition: all 0.4s ease; padding-bottom: 80px; }
         .fade-in { opacity: 1; transform: translateY(0); transition: 0.4s; }
         .fade-out { opacity: 0; transform: translateY(-20px); transition: 0.4s; }
         
         h1 { font-weight: 800; margin-bottom: 1.5rem; font-size: 1.6rem; letter-spacing: 0.5px; text-transform: uppercase; }
         input { width: 100%; padding: 18px; border: 1px solid black; margin-bottom: 1rem; box-sizing: border-box; font-size: 1rem; text-align: center; outline: none; border-radius: 0; }
-        #suggestions { position: absolute; width: 100%; background: white; border: 1px solid black; border-top: none; z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
-        .suggestion-item { padding: 14px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.85rem; text-align: left; }
+        
+        /* Fixed Address Suggestions */
+        #suggestions { position: absolute; width: 100%; background: white; border: 1px solid black; border-top: none; z-index: 100; max-height: 250px; overflow-y: auto; display: none; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .suggestion-item { padding: 14px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.85rem; text-align: left; line-height: 1.4; }
+        .suggestion-item:hover { background: #f9f9f9; }
         
         button { background: black; color: white; border: 1px solid black; padding: 18px; width: 100%; cursor: pointer; font-size: 1rem; margin-bottom: 12px; transition: 0.2s; border-radius: 0; font-weight: bold; }
         .secondary-btn { background: white; color: black; }
@@ -45,19 +48,20 @@
         
         .back-link { display: block; margin-top: 25px; text-decoration: underline; cursor: pointer; font-size: 0.8rem; color: #000; border: none; background: none; width: 100%; }
         
+        /* Slower Flicker Loading */
         .smiley-flicker { font-size: 4rem; margin-bottom: 20px; display: inline-block; }
         .joke-container { font-style: italic; color: #777; padding: 0 20px; line-height: 1.5; font-size: 1rem; min-height: 80px; }
         .radius-pulse { font-size: 0.75rem; font-weight: 800; color: #FF3B30; letter-spacing: 1.5px; margin-bottom: 5px; }
 
-        /* HISTORY BAR UI */
-        .history-bar-btn { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 3px solid black; padding: 15px; font-size: 0.8rem; font-weight: 900; letter-spacing: 2px; z-index: 150; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        /* History UI */
+        .history-bar-btn { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 3px solid black; padding: 18px; font-size: 0.8rem; font-weight: 900; letter-spacing: 2px; z-index: 150; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
         #history-count { background: #FF3B30; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; justify-content: center; align-items: center; font-size: 0.7rem; }
         
-        #history-panel { position: fixed; bottom: -400px; left: 0; right: 0; height: 350px; background: white; border-top: 3px solid black; transition: bottom 0.4s ease-out; z-index: 200; padding: 20px; overflow-y: auto; text-align: left; }
+        #history-panel { position: fixed; bottom: -450px; left: 0; right: 0; height: 400px; background: white; border-top: 3px solid black; transition: bottom 0.4s ease-out; z-index: 200; padding: 20px; overflow-y: auto; text-align: left; }
         #history-panel.open { bottom: 0; }
-        .history-item { padding: 12px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .history-item { padding: 15px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         
-        @keyframes pulse-highlight { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes pulse-highlight { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
         .pulse-active { animation: pulse-highlight 0.4s ease-out; }
     </style>
 </head>
@@ -67,7 +71,7 @@
         <div id="screen-content">
             <h1>THE HUNGER FIX</h1>
             <div style="position: relative;">
-                <input type="text" id="cityInput" placeholder="Where are you?" oninput="debounceSearch()">
+                <input type="text" id="cityInput" placeholder="Enter address or city" oninput="debounceSearch()">
                 <div id="suggestions"></div>
             </div>
             <button onclick="handleNext()">Next</button>
@@ -81,13 +85,13 @@
     </button>
     
     <div id="history-panel">
-        <h3 style="margin-top:0; font-size: 0.8rem; text-transform: uppercase;">Recently Viewed</h3>
+        <h3 style="margin-top:0; font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid black; padding-bottom: 10px;">Your Collection</h3>
         <div id="history-list"></div>
-        <button class="back-link" onclick="toggleHistory()" style="margin-top:10px;">Close</button>
+        <button class="back-link" onclick="toggleHistory()" style="margin-top:20px; font-weight: bold;">Close History</button>
     </div>
 
     <script>
-        const GOOGLE_API_KEY = "API_KEY_PLACEHOLDER";
+        const GOOGLE_API_KEY = "YOUR_GOOGLE_PLACES_API_KEY_HERE";
 
         const container = document.getElementById('app-container');
         const screen = document.getElementById('screen-content');
@@ -99,9 +103,9 @@
         let flickerInterval;
 
         const distanceTiers = [5000, 15000, 25000, 35000];
-        const searchEmojis = ["🍕", "🍔", "🌮", "🍣", "🍦", "🥪", "🍳", "🍜", "🍩", "🍱", " Curry "];
-        const errorEmojis = ["💀", "🪦", "🫠", "📉", "🍄"];
-        const globalJokes = ["Bribing the chef...", "Consulting the burger gods...", "Asking the satellite to zoom in on fries...", "Negotiating with delivery drivers..."];
+        const searchEmojis = ["🍕", "🍔", "🌮", "🍣", "🍦", "🥪", "🍳", "🍜", "🍩", "🥨", "🍱"];
+        const errorEmojis = ["💀", "🫠", "📉", "🫥", "🚬"];
+        const globalJokes = ["Bribing the chef...", "Consulting the burger gods...", "Searching for hidden fries...", "Negotiating with delivery drivers...", "Checking the crumb count..."];
 
         const cuisineMapping = {
             'Comfort': ['hamburger_restaurant', 'steak_house', 'pizza_restaurant'],
@@ -118,12 +122,15 @@
             if(!el) return;
             flickerInterval = setInterval(() => {
                 el.innerText = emojiSet[Math.floor(Math.random() * emojiSet.length)];
-            }, 400); // Legible speed
+            }, 400); 
         }
 
         function stopFlicker() { if (flickerInterval) clearInterval(flickerInterval); }
 
-        function handleNext() { if (!lat) return alert("Select a city first!"); showCuisineSelection(); }
+        function handleNext() { 
+            if (!lat) return alert("Please select an address from the suggestions!"); 
+            showCuisineSelection(); 
+        }
 
         function showCuisineSelection() {
             transition(() => {
@@ -162,7 +169,7 @@
             `;
             startFlicker(searchEmojis);
 
-            await wait(2000); 
+            await wait(2200); 
             let searchType = type === 'Surprise' ? Object.keys(cuisineMapping)[Math.floor(Math.random() * 6)] : type;
 
             try {
@@ -171,7 +178,7 @@
                     headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_API_KEY, 'X-Goog-FieldMask': 'places.displayName,places.rating,places.googleMapsUri,places.id,places.currentOpeningHours,places.regularOpeningHours' },
                     body: JSON.stringify({
                         includedTypes: cuisineMapping[searchType],
-                        excludedPrimaryTypes: ["hotel", "lodging", "bed_and_breakfast"], // NO HOTELS
+                        excludedPrimaryTypes: ["hotel", "lodging", "bed_and_breakfast"], 
                         maxResultCount: 20,
                         locationRestriction: { circle: { center: { latitude: lat, longitude: lon }, radius: currentDist } }
                     })
@@ -181,7 +188,6 @@
                 let placeList = (data.places || []).filter(p => !blacklist.has(p.id));
                 if (openNowOnly) placeList = placeList.filter(p => p.currentOpeningHours?.openNow === true);
 
-                // ELASTIC RADIUS AUTO-ADVANCE
                 if (placeList.length === 0 && currentTierIdx < (distanceTiers.length - 1)) {
                     return startSearch(type, currentTierIdx + 1);
                 }
@@ -193,7 +199,7 @@
                     addToHistory(place, searchType);
                     showVerdict(place, searchType);
                 } else {
-                    showError("Nothing found within " + distanceTiers[distanceTiers.length-1]/1000 + "KM.");
+                    showError("No spots found within " + distanceTiers[distanceTiers.length-1]/1000 + "KM.");
                 }
             } catch (e) { stopFlicker(); showError(); }
         }
@@ -215,8 +221,8 @@
         function updateHistoryUI() {
             document.getElementById('history-list').innerHTML = history.map(h => `
                 <div class="history-item">
-                    <div><h4>${h.displayName.text}</h4><small>${h.category} • ⭐ ${h.rating || 'N/A'}</small></div>
-                    <a href="${h.googleMapsUri}" target="_blank" style="text-decoration:none; font-size:1.2rem;">📍</a>
+                    <div><h4 style="margin:0;">${h.displayName.text}</h4><small>${h.category} • ⭐ ${h.rating || 'New'}</small></div>
+                    <a href="${h.googleMapsUri}" target="_blank" style="text-decoration:none; font-size:1.4rem;">📍</a>
                 </div>
             `).join('');
         }
@@ -254,24 +260,49 @@
             this.timeout = setTimeout(async () => { 
                 const val = document.getElementById('cityInput').value; 
                 if(val.length < 3) return;
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${val}`); 
+                
+                // ADDED addressdetails=1 to capture house numbers
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(val)}`); 
                 const data = await res.json(); 
                 const list = document.getElementById('suggestions'); 
                 list.innerHTML = ""; 
+                
                 if (data.length > 0) {
                     list.style.display = 'block'; 
                     data.forEach(item => { 
                         const div = document.createElement('div'); 
                         div.className = 'suggestion-item'; 
-                        div.innerText = item.display_name; 
-                        div.onclick = () => { document.getElementById('cityInput').value = item.display_name; lat = parseFloat(item.lat); lon = parseFloat(item.lon); list.style.display = 'none'; }; 
+                        
+                        // Construct display string manually to ensure house number shows up first if present
+                        const address = item.address;
+                        const houseNum = address.house_number || "";
+                        const road = address.road || address.pedestrian || "";
+                        const city = address.city || address.town || address.village || "";
+                        
+                        const mainLabel = houseNum ? `${houseNum} ${road}` : item.display_name.split(',')[0];
+                        const subLabel = city ? `, ${city}` : "";
+
+                        div.innerText = mainLabel + subLabel; 
+                        
+                        div.onclick = () => { 
+                            document.getElementById('cityInput').value = mainLabel + subLabel; 
+                            lat = parseFloat(item.lat); 
+                            lon = parseFloat(item.lon); 
+                            list.style.display = 'none'; 
+                        }; 
                         list.appendChild(div); 
                     });
                 }
-            }, 300); 
+            }, 500); // 500ms delay to prevent heavy API calls
         }
 
-        function locateMe() { navigator.geolocation.getCurrentPosition(async (pos) => { lat = pos.coords.latitude; lon = pos.coords.longitude; document.getElementById('cityInput').value = "My Current Location"; }); }
+        function locateMe() { 
+            navigator.geolocation.getCurrentPosition(async (pos) => { 
+                lat = pos.coords.latitude; 
+                lon = pos.coords.longitude; 
+                document.getElementById('cityInput').value = "My Current Location"; 
+            }, () => alert("Location access denied. Please type your address.")); 
+        }
     </script>
 </body>
 </html>
