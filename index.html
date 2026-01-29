@@ -26,6 +26,7 @@
         input { width: 100%; padding: 18px; border: 1px solid black; margin-bottom: 1rem; box-sizing: border-box; font-size: 1rem; text-align: center; outline: none; border-radius: 0; }
         #suggestions { position: absolute; top: 56px; left: 0; width: 100%; background: white; border: 1px solid black; border-top: none; z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
         .suggestion-item { padding: 14px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.85rem; text-align: left; color: black; }
+        .suggestion-item:hover { background-color: #f9f9f9; }
         
         button { background: black; color: white; border: 1px solid black; padding: 18px; width: 100%; cursor: pointer; font-size: 1rem; margin-bottom: 12px; transition: 0.2s; border-radius: 0; }
         .secondary-btn { background: white; color: black; }
@@ -41,8 +42,7 @@
         .rating-tag { font-size: 0.9rem; color: #f1c40f; font-weight: bold; margin-bottom: 5px; display: block; }
         .summary-text { font-size: 0.85rem; color: #444; line-height: 1.4; margin: 10px 0; font-style: italic; }
         .action-btn { display: block; text-align: center; padding: 16px; margin-top: 15px; border: 1px solid black; text-decoration: none; color: white; background: black; font-weight: bold; font-size: 0.9rem; }
-        .shuffle-btn { background: #f0f0f0; color: black; border: none; margin-top: 15px; font-size: 0.85rem; padding: 12px; width: 100%; cursor: pointer; }
-
+        
         .back-link { display: block; margin-top: 25px; text-decoration: underline; cursor: pointer; font-size: 0.8rem; color: #666; border: none; background: none; width: 100%; }
         
         .smiley-loader { font-size: 2.5rem; margin-bottom: 15px; display: block; height: 50px; }
@@ -65,6 +65,7 @@
     </div>
 
     <script>
+        // 1. INSERT YOUR KEY HERE
         const GOOGLE_API_KEY = "YOUR_API_KEY_HERE";
 
         const container = document.getElementById('app-container');
@@ -106,6 +107,15 @@
             'French': 'french_restaurant', 'Mediterranean': 'mediterranean_restaurant',
             'Burgers': 'hamburger_restaurant', 'Sushi': 'sushi_restaurant'
         };
+
+        // CLOSE SUGGESTIONS ON OUTSIDE CLICK
+        document.addEventListener('click', function(event) {
+            const list = document.getElementById('suggestions');
+            const input = document.getElementById('cityInput');
+            if (list && input && !input.contains(event.target) && !list.contains(event.target)) {
+                list.style.display = 'none';
+            }
+        });
 
         function handleNext() { 
             if (!lat) return alert("Select a city first!"); 
@@ -221,34 +231,72 @@
                         <p class="summary-text">"${place.editorialSummary?.text || 'A highly-rated local favorite.'}"</p>
                         <a href="${place.googleMapsUri}" target="_blank" class="action-btn">📍 Navigate There</a>
                     </div>
-                    <button class="shuffle-btn" onclick="blacklist.add('${place.id}'); runTieredSearch();">Show Me Another</button>
+                    <button style="background:#f0f0f0; color:black; border:none; margin-top:15px; font-size:0.85rem; padding:12px;" onclick="blacklist.add('${place.id}'); runTieredSearch();">Show Me Another</button>
                     <button class="back-link" onclick="showCuisineFilters()">Change Vibe</button>
                 `;
             });
         }
 
         function transition(cb) { container.classList.add('fade-out'); setTimeout(() => { cb(); container.classList.remove('fade-out'); container.classList.add('fade-in'); }, 400); }
+        
         function debounceSearch() { 
             clearTimeout(this.timeout); 
             this.timeout = setTimeout(async () => { 
                 const val = document.getElementById('cityInput').value; 
-                if(val.length < 3) return;
+                if(val.length < 3) {
+                    document.getElementById('suggestions').style.display = 'none';
+                    return;
+                }
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${val}`); 
                 const data = await res.json(); 
                 const list = document.getElementById('suggestions'); 
-                list.innerHTML = ""; list.style.display = 'block'; 
-                data.forEach(item => { 
-                    const div = document.createElement('div'); div.className = 'suggestion-item'; div.innerText = item.display_name; 
-                    div.onclick = () => { document.getElementById('cityInput').value = item.display_name; lat = parseFloat(item.lat); lon = parseFloat(item.lon); list.style.display = 'none'; }; 
-                    list.appendChild(div); 
-                }); 
+                list.innerHTML = ""; 
+                
+                if (data.length > 0) {
+                    list.style.display = 'block'; 
+                    data.forEach(item => { 
+                        const div = document.createElement('div'); 
+                        div.className = 'suggestion-item'; 
+                        div.innerText = item.display_name; 
+                        div.onclick = (e) => { 
+                            e.stopPropagation();
+                            document.getElementById('cityInput').value = item.display_name; 
+                            lat = parseFloat(item.lat); 
+                            lon = parseFloat(item.lon); 
+                            list.style.display = 'none'; 
+                        }; 
+                        list.appendChild(div); 
+                    });
+                } else {
+                    list.style.display = 'none';
+                }
             }, 300); 
         }
+
         async function locateMe() { 
+            const input = document.getElementById('cityInput');
+            input.placeholder = "Locating you...";
+            
             navigator.geolocation.getCurrentPosition(async (pos) => { 
-                lat = pos.coords.latitude; lon = pos.coords.longitude; 
-                document.getElementById('cityInput').value = "My Location"; 
-                handleNext();
+                lat = pos.coords.latitude; 
+                lon = pos.coords.longitude; 
+
+                try {
+                    // FREE Reverse Geocoding via OpenStreetMap
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                    const data = await res.json();
+                    const cityName = data.address.city || data.address.town || data.address.village || "My Location";
+                    const stateName = data.address.state || "";
+                    input.value = stateName ? `${cityName}, ${stateName}` : cityName;
+                } catch (e) {
+                    input.value = "My Location";
+                }
+                
+                setTimeout(() => { handleNext(); }, 800);
+
+            }, (error) => {
+                alert("Location access denied. Please type your city.");
+                input.placeholder = "Where are you? (City, State)";
             }); 
         }
     </script>
