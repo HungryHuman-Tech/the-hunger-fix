@@ -87,7 +87,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 .status-pulse { font-size: 0.75rem; font-weight: 900; color: #FF3B30; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 10px; }
 
 /* --- HISTORY UI --- */
-.history-bar-btn { position: fixed; color:#000 bottom: 0; left: 0; right: 0; background: #fff; border-top: 3px solid black; padding: 20px; z-index: 150; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
+.history-bar-btn { position: fixed; color:#000; bottom: 0; left: 0; right: 0; background: #fff; border-top: 3px solid black; padding: 20px; z-index: 150; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
 #history-panel { position: fixed; bottom: -500px; left: 0; right: 0; height: 400px; background: white; border-top: 3px solid black; transition: bottom 0.4s ease; z-index: 200; padding: 20px; overflow-y: auto; text-align: left; }
 #history-panel.open { bottom: 0; }
 .history-item { padding: 15px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
