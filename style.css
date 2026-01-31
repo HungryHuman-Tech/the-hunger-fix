@@ -91,3 +91,17 @@ input:checked + .slider:before { transform: translateX(20px); }
 #history-panel { position: fixed; bottom: -500px; left: 0; right: 0; height: 400px; background: white; border-top: 3px solid black; transition: bottom 0.4s ease; z-index: 200; padding: 20px; overflow-y: auto; text-align: left; }
 #history-panel.open { bottom: 0; }
 .history-item { padding: 15px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+#history-count {
+    background-color: #ffffff;    /* White interior */
+    color: #FF3B30;              /* Red text to match the circle */
+    border: 2px solid #FF3B30;   /* Red circle border */
+    border-radius: 50%;          /* Makes it a circle */
+    width: 24px;                 /* Fixed width */
+    height: 24px;                /* Fixed height */
+    display: flex;               /* Centers the number inside */
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: 900;
+    margin-left: 8px;            /* Spacing from the word "HISTORY" */
+}
