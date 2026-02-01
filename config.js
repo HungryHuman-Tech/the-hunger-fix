@@ -28,8 +28,7 @@ export const cuisineMapping = {
     ],
     'Healthy': [
         'juice_shop',
-        'acai_shop',
-        'vegan_restaurant'
+        'acai_shop'
     ],
     'Quick': [
         'sandwich_shop', 
