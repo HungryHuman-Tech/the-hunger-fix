@@ -1,6 +1,9 @@
 import { GOOGLE_API_KEY, cuisineMapping } from './config.js';
 import { state, forbiddenKeywords } from './state.js';
 
+/**
+ * Fetches raw data from Google Places API
+ */
 export async function fetchNearbyPlaces(searchType, radius) {
     const response = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
         method: 'POST',
@@ -20,20 +23,28 @@ export async function fetchNearbyPlaces(searchType, radius) {
     return await response.json();
 }
 
-export function filterAndShuffle(places, openNowOnly) {
-    // Filter forbidden and blacklisted
+/**
+ * FILTRATION & RANDOMIZATION
+ * 1. Checks Blacklist & Forbidden Keywords
+ * 2. Filters by Open Status
+ * 3. Filters by Minimum Rating (The new 4+ star logic)
+ * 4. Shuffles the survivors
+ */
+export function filterAndShuffle(places, openNowOnly, minRating) {
     let filtered = (places || []).filter(p => {
         const name = p.displayName.text.toLowerCase();
+        const rating = p.rating || 0;
         const isForbidden = forbiddenKeywords.some(word => name.includes(word));
-        return !state.blacklist.has(p.id) && !isForbidden;
+        
+        // Ensure the spot isn't blacklisted, isn't a hotel, and meets rating bar
+        return !state.blacklist.has(p.id) && !isForbidden && rating >= minRating;
     });
 
-    // Filter by open status
     if (openNowOnly) {
         filtered = filtered.filter(p => p.currentOpeningHours?.openNow === true);
     }
 
-    // Fisher-Yates Shuffle
+    // Fisher-Yates Shuffle for true randomness
     for (let i = filtered.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
