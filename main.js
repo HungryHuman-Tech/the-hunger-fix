@@ -1,27 +1,30 @@
-import { state } from './state.js';
-// Ensure the .js extension is present for browser modules
-import { cuisineMapping } from './config.js'; 
+import { GOOGLE_API_KEY, cuisineMapping } from './config.js';
 import { searchEmojis, errorEmojis, searchJokes, errorJokes } from './jokes.js';
-import { startFlicker, stopFlicker, transition, addToHistory } from './utils.js';
+import { state } from './state.js';
+import { startFlicker, stopFlicker, transition } from './utils.js';
 import { fetchNearbyPlaces, filterAndShuffle } from './api.js';
 
+// --- DOM ELEMENTS ---
 const container = document.getElementById('app-container');
 const screen = document.getElementById('screen-content');
+const historyBtn = document.getElementById('history-btn');
+const historyCount = document.getElementById('history-count');
+const historyList = document.getElementById('history-list');
+const historyPanel = document.getElementById('history-panel');
 
-/**
- * SCREEN: Cuisine Selection
- * Setup with 4+ Star Toggle (Default: ON) and Open Now Toggle
- */
+// --- UI RENDERING ---
+
 function showCuisineSelection() {
     transition(container, () => {
         screen.innerHTML = `
             <div class="filter-section">
-                <div class="toggle-container">
-                    <span class="dist-label">4+ Stars Only</span>
-                    <label class="switch">
-                        <input type="checkbox" id="highRatedCheck" ${state.highRatedOnly ? 'checked' : ''}>
-                        <span class="slider"></span>
-                    </label>
+                <div class="dist-label">Max Distance</div>
+                <div class="dist-toggle">
+                    ${[5000, 15000, 25000, 35000].map(d => 
+                        `<button class="dist-btn ${state.userLimitDist === d ? 'active' : ''}" data-dist="${d}">
+                            ${d/1000}KM
+                        </button>`
+                    ).join('')}
                 </div>
                 <div class="toggle-container">
                     <span class="dist-label">Open Now</span>
@@ -32,162 +35,171 @@ function showCuisineSelection() {
                 </div>
             </div>
             <h1>Hungry for?</h1>
-            <div class="cuisine-grid">
-                ${Object.keys(cuisineMapping).map(opt => `
-                    <button class="cuisine-btn" data-type="${opt}">${opt}</button>
-                `).join("")}
-            </div>
+            ${Object.keys(cuisineMapping).map(opt => `<button class="cuisine-btn" data-type="${opt}">${opt}</button>`).join("")}
             <button class="shuffle-btn" id="surpriseBtn">🎲 Surprise Me</button>
+            <button class="back-link" onclick="location.reload()">Reset Address</button>
         `;
         setupCuisineListeners();
     });
 }
 
-/**
- * Event Listeners for Cuisine Screen
- */
 function setupCuisineListeners() {
-    // Updates global state for ratings
-    document.getElementById('highRatedCheck').onchange = (e) => {
-        state.highRatedOnly = e.target.checked;
-        state.minRating = e.target.checked ? 4.0 : 0;
-    };
-
-    // Updates global state for business hours
-    document.getElementById('openNowCheck').onchange = (e) => {
-        state.openNowOnly = e.target.checked;
-    };
-
-    // Maps each button to the startSearch function
+    document.querySelectorAll('.dist-btn').forEach(b => {
+        b.onclick = () => { state.userLimitDist = parseInt(b.dataset.dist); showCuisineSelection(); };
+    });
+    document.getElementById('openNowCheck').onchange = (e) => { state.openNowOnly = e.target.checked; };
     document.querySelectorAll('.cuisine-btn').forEach(b => {
         b.onclick = () => startSearch(b.dataset.type);
     });
-
-    // Randomly selects a cuisine type from config.js
-    document.getElementById('surpriseBtn').onclick = () => {
-        const categories = Object.keys(cuisineMapping);
-        const randomType = categories[Math.floor(Math.random() * categories.length)];
-        startSearch(randomType);
-    };
+    document.getElementById('surpriseBtn').onclick = () => startSearch('Surprise');
 }
 
-/**
- * CORE SEARCH LOGIC
- * Recursively checks radiuses: 5km -> 15km -> 25km -> 35km
- */
+// --- SEARCH LOGIC ---
+
 async function startSearch(type, currentTierIdx = null) {
     const tiers = [5000, 15000, 25000, 35000];
-    if (currentTierIdx === null) currentTierIdx = 0;
+    if (currentTierIdx === null) currentTierIdx = tiers.indexOf(state.userLimitDist);
     const currentDist = tiers[currentTierIdx];
-
-    // Loading UI
-    const joke = searchJokes[Math.floor(Math.random() * searchJokes.length)];
-    const emoji = searchEmojis[Math.floor(Math.random() * searchEmojis.length)];
     
     screen.innerHTML = `
-        <div class="loading-container">
-            <div class="flicker-emoji">${emoji}</div>
-            <div class="joke-text">${joke}</div>
-        </div>
+        <div><span id="flicker-target" class="smiley-flicker">🍕</span></div>
+        <div class="joke-container">"${searchJokes[Math.floor(Math.random() * searchJokes.length)]}"</div>
+        <div class="status-pulse">Scanning ${currentDist/1000}KM...</div>
     `;
-    startFlicker();
+    startFlicker(searchEmojis);
+
+    await new Promise(r => setTimeout(r, 2200)); 
+    let searchType = type === 'Surprise' ? Object.keys(cuisineMapping)[Math.floor(Math.random() * 6)] : type;
 
     try {
-        const data = await fetchNearbyPlaces(type, currentDist);
-        // Uses the minRating from state (4.0 by default)
-        const placeList = filterAndShuffle(data.places, state.openNowOnly, state.minRating);
+        const data = await fetchNearbyPlaces(searchType, currentDist);
+        const placeList = filterAndShuffle(data.places, state.openNowOnly);
 
         if (placeList.length > 0) {
             stopFlicker();
             const place = placeList[0];
             const statusText = place.currentOpeningHours?.openNow ? "OPEN NOW" : "CLOSED";
-            addToHistory(place, type);
-            showVerdict(place, type, statusText);
-        } else if (currentTierIdx < (tiers.length - 1)) {
-            // Expand search radius
+            
+            addToHistory(place, searchType);
+            showVerdict(place, searchType, statusText);
+        } 
+        else if (currentTierIdx < (tiers.length - 1)) {
             return startSearch(type, currentTierIdx + 1);
-        } else if (state.highRatedOnly && state.minRating >= 4.0) {
-            // End of the line: No 4+ star restaurants found
-            stopFlicker();
-            showLowRatingPrompt(type);
-        } else {
-            // No results found at any rating
+        } 
+        else {
             stopFlicker();
             showError(errorJokes[Math.floor(Math.random() * errorJokes.length)]);
         }
-    } catch (e) {
-        stopFlicker();
-        showError("The internet is hangry. Check your connection.");
+    } catch (e) { 
+        stopFlicker(); 
+        showError("Network error. Your signal is hangry."); 
     }
 }
 
-/**
- * FALLBACK PROMPT: Shown when 4-star search fails
- */
-function showLowRatingPrompt(type) {
-    transition(container, () => {
-        screen.innerHTML = `
-            <h1>SLIGHT PROBLEM</h1>
-            <div class="joke-container">None of the restaurants above 4 stars are available nearby.</div>
-            <p style="margin-bottom:20px;">Want to try lower rated restaurants?</p>
-            <button id="lowerStandardsBtn" class="action-btn">YES, I'M DESPERATE</button>
-            <button id="nevermindBtn" class="back-link">NO, I'LL STARVE</button>
-        `;
-        
-        document.getElementById('lowerStandardsBtn').onclick = () => {
-            state.minRating = 0; // Disable rating requirement for the retry
-            startSearch(type);
-        };
-        
-        document.getElementById('nevermindBtn').onclick = () => {
-            state.minRating = 4.0; // Reset state
-            showCuisineSelection();
-        };
-    });
-}
+// --- VERDICT & HISTORY ---
 
-/**
- * FINAL VERDICT SCREEN
- */
 function showVerdict(place, type, statusText) {
     transition(container, () => {
         screen.innerHTML = `
-            <div class="category-badge">${type.toUpperCase()}</div>
-            <h1>${place.displayName.text}</h1>
-            <p>Rating: ⭐ ${place.rating || 'New'}</p>
-            <p class="status">${statusText}</p>
-            <div class="action-row">
-                <a href="${place.googleMapsUri}" target="_blank" class="action-btn">GO NOW</a>
-                <button id="nextOptionBtn" class="action-btn secondary">NEXT OPTION</button>
+            <h1>THE FIX</h1>
+            <div class="spot-card">
+                <div class="best-badge">${type}</div>
+                <h2>${place.displayName.text}</h2>
+                <p>Rating: ⭐ ${place.rating || 'New'}</p>
+                <p style="font-weight: bold; color: ${statusText === 'OPEN NOW' ? '#28a745' : '#FF3B30'}">
+                    ${statusText}
+                </p>
+                <a href="${place.googleMapsUri}" target="_blank" class="action-btn">LET'S GO</a>
             </div>
-            <button id="backToCuisine" class="back-link">Try something else?</button>
+            <button id="keepLookingBtn" class="back-link">Keep Looking</button>
+            <button id="changeCraveBtn" class="back-link" style="text-decoration:none;">← Change Craving</button>
         `;
-        
-        document.getElementById('nextOptionBtn').onclick = () => {
-            state.blacklist.add(place.id);
-            startSearch(type);
-        };
-
-        document.getElementById('backToCuisine').onclick = () => showCuisineSelection();
+        document.getElementById('keepLookingBtn').onclick = () => { state.blacklist.add(place.id); startSearch(type); };
+        document.getElementById('changeCraveBtn').onclick = () => showCuisineSelection();
     });
 }
 
-/**
- * ERROR SCREEN
- */
 function showError(msg) {
-    const emoji = errorEmojis[Math.floor(Math.random() * errorEmojis.length)];
     transition(container, () => {
         screen.innerHTML = `
-            <div class="flicker-emoji">${emoji}</div>
-            <h1>SORRY!</h1>
+            <div><span id="flicker-target" class="smiley-flicker">💀</span></div>
+            <h1>EMPTY PLATE</h1>
             <div class="joke-container">${msg}</div>
-            <button id="errorBackBtn" class="action-btn">TRY AGAIN</button>
+            <button id="tryAgainBtn">Try Again</button>
         `;
-        document.getElementById('errorBackBtn').onclick = () => showCuisineSelection();
+        startFlicker(errorEmojis);
+        document.getElementById('tryAgainBtn').onclick = () => showCuisineSelection();
     });
 }
 
-// Global Exports for HTML compatibility
-window.showCuisineSelection = showCuisineSelection;
-window.startSearch = startSearch;
+function addToHistory(place, type) {
+    if (state.history.find(h => h.id === place.id)) return;
+    state.history.unshift({ ...place, category: type });
+    if (state.history.length > 5) state.history.pop();
+    
+    historyBtn.style.display = 'flex';
+    historyCount.innerText = state.history.length;
+    
+    historyList.innerHTML = state.history.map(h => `
+        <div class="history-item">
+            <div><h4 style="margin:0;">${h.displayName.text}</h4><small>${h.category}</small></div>
+            <a href="${h.googleMapsUri}" target="_blank" style="text-decoration:none; font-size:1.4rem;">📍</a>
+        </div>
+    `).join('');
+}
+
+// --- INITIALIZERS ---
+
+document.getElementById('findFoodBtn').onclick = () => { 
+    if (!state.lat) return alert("Select location!"); 
+    showCuisineSelection(); 
+};
+
+document.getElementById('locateMeBtn').onclick = () => {
+    navigator.geolocation.getCurrentPosition(async (pos) => { 
+        state.lat = pos.coords.latitude; 
+        state.lon = pos.coords.longitude; 
+        document.getElementById('cityInput').value = "Your Current Location"; 
+    });
+};
+
+historyBtn.onclick = () => { historyPanel.classList.toggle('open'); };
+document.getElementById('closeHistoryBtn').onclick = () => { historyPanel.classList.remove('open'); };
+
+// Nominatim Search Logic
+let timeout;
+document.getElementById('cityInput').oninput = (e) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(async () => {
+        const val = e.target.value;
+        if(val.length < 3) return;
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(val)}`);
+        const data = await res.json();
+        const list = document.getElementById('suggestions');
+        list.innerHTML = "";
+        if (data.length > 0) {
+            list.style.display = 'block';
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                const a = item.address;
+                const label = [(a.house_number ? a.house_number + " " : "") + (a.road || ""), a.city || a.town || "", a.country || ""].filter(p => p.trim() !== "").join(", ");
+                div.innerText = label;
+                div.onclick = (ev) => { 
+                    ev.stopPropagation(); 
+                    document.getElementById('cityInput').value = label; 
+                    state.lat = parseFloat(item.lat); 
+                    state.lon = parseFloat(item.lon); 
+                    list.style.display = 'none'; 
+                };
+                list.appendChild(div);
+            });
+        }
+    }, 500);
+};
+
+document.addEventListener('click', (e) => {
+    if (e.target.id !== 'suggestions' && e.target.id !== 'cityInput') {
+        document.getElementById('suggestions').style.display = 'none';
+    }
+});
