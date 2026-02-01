@@ -92,34 +92,3 @@ input:checked + .slider:before { transform: translateX(20px); }
 #history-panel.open { bottom: 0; }
 .history-item { padding: 15px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
 #history-count { background-color: #ffffff; color: #FF3B30; border: 2px solid #FF3B30; border-radius: 50%; width: 22px; height: 22px; display: flex; justify-content: center; align-items: center; font-size: 0.75rem; font-weight: 900; flex-shrink: 0; }
-
-/* Container for the toggle and its label */
-.toggle-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; width: 100%; max-width: 280px; }
-
-/* The switch container */
-.switch { position: relative; display: inline-block; width: 44px; height: 22px; flex-shrink: 0; }
-
-/* Hide default checkbox */
-.switch input { opacity: 0; width: 0; height: 0; }
-
-/* The slider track */
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 22px; border: 2px solid #000; }
-
-/* The white circle (knob) */
-.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; border: 1px solid #000; }
-
-/* Red color when toggled ON */
-input:checked + .slider { background-color: #FF3B30; }
-
-/* Move knob when toggled ON */
-input:checked + .slider:before { transform: translateX(22px); }
-
-/* Centers the filter toggles at the top */
-.filter-section { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; padding: 10px; border: 2px solid black; border-radius: 12px; background: #f9f9f9; }
-
-/* Modern grid for cuisine buttons */
-.cuisine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 15px; }
-
-/* Ensure the fallback button stands out */
-.action-btn { background: #000; color: #fff; border: none; padding: 15px 25px; font-weight: 900; font-size: 1rem; cursor: pointer; border-radius: 8px; text-decoration: none; display: inline-block; margin-top: 10px; }
-.action-btn:active { transform: scale(0.98); }
