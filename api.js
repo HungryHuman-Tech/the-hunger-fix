@@ -1,6 +1,5 @@
 import { GOOGLE_API_KEY, cuisineMapping } from './config.js';
 import { state, forbiddenKeywords } from './state.js';
-
 /**
  * Fetches raw data from Google Places API
  */
