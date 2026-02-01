@@ -27,8 +27,9 @@ export const cuisineMapping = {
         'mediterranean_restaurant'
     ],
     'Healthy': [
-        'mediterranean_restaurant',
-        'indian_restaurant'
+        'juice_shop',
+        'acai_shop',
+        'vegan_restaurant'
     ],
     'Quick': [
         'sandwich_shop', 
